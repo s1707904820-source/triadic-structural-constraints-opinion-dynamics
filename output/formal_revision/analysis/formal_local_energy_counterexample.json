@@ -1,0 +1,74 @@
+{
+  "graph": "three-node complete graph K3",
+  "roles": {
+    "updating_node_i": 0,
+    "source_j": 1,
+    "third_party_k": 2
+  },
+  "parameters": {
+    "epsilon_0": 0.15,
+    "alpha": 3.5,
+    "mu": 0.5,
+    "beta": 3.0,
+    "local_clustering_i": 1.0,
+    "edge_jaccard_weight": 0.3333333333333333
+  },
+  "opinions_before": {
+    "0": 0.4,
+    "1": 0.6,
+    "2": 0.0
+  },
+  "opinions_after": {
+    "0": 0.4301194211912202,
+    "1": 0.6,
+    "2": 0.0
+  },
+  "all_three_gates": {
+    "0-1": {
+      "opinion_gap": 0.19999999999999996,
+      "effective_threshold": 0.7353072596725919,
+      "passes": true
+    },
+    "0-2": {
+      "opinion_gap": 0.4,
+      "effective_threshold": 0.7353072596725919,
+      "passes": true
+    },
+    "1-2": {
+      "opinion_gap": 0.6,
+      "effective_threshold": 0.7353072596725919,
+      "passes": true
+    }
+  },
+  "third_party_factor_phi": 0.301194211912202,
+  "effective_update_fraction_lambda": 0.150597105956101,
+  "selected_edge_energy": {
+    "before": 0.01999999999999999,
+    "after": 0.014429705528203017,
+    "change": -0.005570294471796973
+  },
+  "local_incident_edge_energy": {
+    "before": 0.1,
+    "after": 0.10693106377113817,
+    "change": 0.006931063771138168
+  },
+  "global_undirected_edge_energy": {
+    "before": 0.28,
+    "after": 0.2869310637711382,
+    "change": 0.006931063771138168
+  },
+  "exact_unweighted_local_nonincrease_condition": {
+    "degree_i": 2,
+    "incident_disagreement_sum": 0.20000000000000007,
+    "left_side": 0.04000000000000001,
+    "right_side": -0.0060238842382440375,
+    "condition_satisfied": false
+  },
+  "validation": {
+    "triangle_trigger_probability_is_one": true,
+    "all_gates_pass": true,
+    "selected_edge_decreases": true,
+    "local_energy_increases": true,
+    "global_energy_increases": true
+  }
+}

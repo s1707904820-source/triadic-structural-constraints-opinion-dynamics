@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software or source data, please cite the associated repository release and manuscript."
+title: "Triadic Structural Constraints in Opinion Dynamics"
+type: software
+authors:
+  - family-names: Wang
+    given-names: Jianwei
+  - family-names: Song
+    given-names: Penghui
+version: 1.0.0
+date-released: 2026-10-02
+repository-code: "https://github.com/s1707904820-source/triadic-structural-constraints-opinion-dynamics"
+license: MIT
+keywords:
+  - opinion dynamics
+  - bounded confidence
+  - triadic closure
+  - Jaccard similarity
+  - Holme-Kim network
+
