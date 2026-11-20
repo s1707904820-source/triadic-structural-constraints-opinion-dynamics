@@ -8,8 +8,8 @@
     python run_all.py --quick --only network hysteresis
     python run_all.py --plot
 
-完整运行（必须显式确认）：
-    python run_all.py --all
+完整运行：
+    python run_all.py
 
 只运行指定实验：
     python run_all.py --only hysteresis
@@ -18,11 +18,12 @@
 运行实验后立刻生成图片：
     python run_all.py --quick --only hysteresis --plot
 
-说明：命令行默认 workers=4；可用 --workers K 调整 Windows spawn-safe 多进程数。
-每条状态继承路径内部仍保持顺序，只有独立重复或独立参数块并行。
+说明：本稳定版默认顺序执行，不再使用 ProcessPoolExecutor，避免 Windows/Anaconda 下的
+BrokenProcessPool / forrtl control-C 问题。
 """
 
 import argparse
+import math
 import os
 import time
 import config
@@ -35,19 +36,14 @@ def build_parser():
     parser = argparse.ArgumentParser(description="Run structural confinement experiments.")
     parser.add_argument(
         "--quick", action="store_true",
-        help=("仅用于冒烟测试：默认设 N=200、num_runs=3、主实验和扫描均为2 sweeps，"
-              "并缩减参数网格；显式命令行覆盖值优先"))
+        help="快速调试：num_runs=3，并缩减部分参数网格；不自动缩短 sweeps")
     parser.add_argument("--plot", "--figures", action="store_true", help="实验结束后生成图片")
     parser.add_argument("--runs", type=int, default=None, help="覆盖 SIMULATION['num_runs']，例如 --runs 10")
-    parser.add_argument(
-        "--workers", type=int, default=4,
-        help=("Number of worker processes for independent simulations; "
-              "default 4; use 1 for serial troubleshooting."),
-    )
-    parser.add_argument("--main-sweeps", type=float, default=None,
-                        help="覆盖所有主实验的 Monte Carlo sweeps")
-    parser.add_argument("--steps", type=int, default=None,
-                        help="兼容旧命令：换算为 steps/N 个主实验 sweeps")
+    budget_group = parser.add_mutually_exclusive_group()
+    budget_group.add_argument("--main-sweeps", type=float, default=None,
+                              help="覆盖所有主实验的 Monte Carlo sweeps")
+    budget_group.add_argument("--steps", type=int, default=None,
+                              help="兼容旧命令：换算为 steps/N 个主实验 sweeps")
     parser.add_argument("--N", type=int, default=None, help="覆盖网络节点数")
     parser.add_argument("--sweep-sweeps", type=float, default=None,
                         help="覆盖 epsilon/磁滞扫描每个 epsilon 点的 Monte Carlo sweeps，例如 --sweep-sweeps 120")
@@ -61,18 +57,52 @@ def build_parser():
         help=("覆盖输出根目录；quick模式默认使用 output/smoke，"
               "避免覆盖正式结果"),
     )
-    selection = parser.add_mutually_exclusive_group()
-    selection.add_argument(
-        "--only", nargs="*", default=None,
+    parser.add_argument(
+        "--only", nargs="+", default=None,
         help=(
             "只运行指定实验。可选：network ablation epsilon hysteresis beta alpha mu "
-            "perturbation update_mode community vector empirical joint_eps_beta joint_p_beta size m init"
+            "threshold_control triangle_failure_control threshold_recovery perturbation update_mode community sbm_hysteresis "
+            "vector empirical joint_eps_beta joint_p_beta size m init"
         ),
     )
-    selection.add_argument(
-        "--all", action="store_true",
-        help="显式运行全部17类实验；运行前建议先用相同选项加 --dry-run")
     return parser
+
+
+def validate_cli_args(args):
+    """Reject invalid or ambiguous workload settings before any run starts."""
+    if args.runs is not None and args.runs < 1:
+        raise SystemExit("--runs must be at least 1")
+    if args.N is not None:
+        if args.N < 1:
+            raise SystemExit("--N must be at least 1")
+        if args.N <= int(NETWORK['m']):
+            raise SystemExit(
+                "--N must be greater than NETWORK['m'] for Holme-Kim runs")
+    if args.steps is not None and args.steps <= 0:
+        raise SystemExit("--steps must be positive")
+    for option, value in (
+            ("--main-sweeps", args.main_sweeps),
+            ("--sweep-sweeps", args.sweep_sweeps)):
+        if value is not None and (not math.isfinite(value) or value <= 0):
+            raise SystemExit("{} must be finite and positive".format(option))
+
+    if args.only:
+        known = {
+            'network', 'ablation', 'epsilon', 'hysteresis', 'beta', 'alpha',
+            'mu', 'threshold_control', 'triangle_failure_control',
+            'transition_prediction', 'threshold_recovery', 'perturbation',
+            'update_mode', 'community', 'sbm_hysteresis', 'vector',
+            'empirical', 'joint_eps_beta', 'joint_p_beta', 'size', 'm',
+            'init', 'exp7', 'exp6', 'eps', 'eps_sweep', 'hysteresis_sweep',
+            'perturb', 'sigma', 'synchronous', 'sync', 'sbm',
+            'community_conflict', 'sbm_hyst', 'community_hysteresis',
+            'threshold_assignment', 'thresholds', 'triangle_failure',
+            'failed_triangle', 'recovery', '2d', 'multidimensional', 'real',
+            'real_network', 'size_robust', 'm_robust', 'init_dist',
+        }
+        unknown = [name for name in args.only if name not in known]
+        if unknown:
+            raise SystemExit("unknown experiment name(s): {}".format(unknown))
 
 
 def configure_output_root(output_root):
@@ -93,10 +123,19 @@ def estimate_elementary_updates(selected, quick, runs):
     """Return transparent, conservative workload estimates for dry runs."""
     aliases = {
         'exp7': 'network', 'exp6': 'ablation', 'eps': 'epsilon',
+        'threshold_assignment': 'threshold_control',
+        'transition': 'transition_prediction',
+        'forward_transition': 'transition_prediction',
+        'thresholds': 'threshold_control',
+        'triangle_failure': 'triangle_failure_control',
+        'failed_triangle': 'triangle_failure_control',
+        'recovery': 'threshold_recovery',
         'eps_sweep': 'epsilon', 'hysteresis_sweep': 'hysteresis',
         'perturb': 'perturbation', 'sigma': 'perturbation',
         'synchronous': 'update_mode', 'sync': 'update_mode',
         'sbm': 'community', 'community_conflict': 'community',
+        'sbm_hysteresis': 'sbm_hysteresis', 'sbm_hyst': 'sbm_hysteresis',
+        'community_hysteresis': 'sbm_hysteresis',
         '2d': 'vector', 'multidimensional': 'vector',
         'real': 'empirical', 'real_network': 'empirical',
         'size_robust': 'size', 'm_robust': 'm', 'init_dist': 'init',
@@ -111,34 +150,39 @@ def estimate_elementary_updates(selected, quick, runs):
         NETWORK['N'] * float(SIMULATION['main_sweeps'])))
     scan_updates = int(round(
         NETWORK['N'] * float(SIMULATION['sweep_sweeps'])))
+    transition_prediction_updates = int(round(
+        NETWORK['N'] * 100.0))
     estimates = {
         'network': 0,
         'ablation': p_count * 6 * runs * main_updates,
+        'threshold_control': p_count * 3 * runs * main_updates,
+        'triangle_failure_control': p_count * 2 * runs * main_updates,
+        'transition_prediction': 3 * p_count * (3 if quick else 23) * runs * transition_prediction_updates,
+        'threshold_recovery': ((5 if quick else 3)
+                              * (1 + (3 if quick else len(SIMULATION.get(
+                                  'perturb_sigma_values', []))))
+                              * epsilon_count * runs * scan_updates),
         'epsilon': 3 * 2 * epsilon_count * runs * scan_updates,
         'hysteresis': p_count * 2 * epsilon_count * runs * scan_updates,
-        # One forward scan is shared by every sigma branch; each sigma then
-        # runs one backward scan.  Do not count a separate forward scan for
-        # every perturbation amplitude.
         'perturbation': ((5 if quick else 3)
-                         * (1 + (3 if quick else len(SIMULATION.get(
-                             'perturb_sigma_values', []))))
-                         * epsilon_count * runs * scan_updates),
+                         * (3 if quick else len(SIMULATION.get(
+                             'perturb_sigma_values', [])))
+                         * 2 * epsilon_count * runs * scan_updates),
         'update_mode': (5 if quick else 4) * 2 * runs * main_updates,
         'community': (2 if quick else 5) * 3 * runs * main_updates,
+        # One shared forward scan plus one backward branch per sigma, per
+        # mixing value, each point running scan_updates elementary updates.
+        'sbm_hysteresis': ((2 if quick else 5)
+                           * (1 + (2 if quick else 4))
+                           * epsilon_count * runs * scan_updates),
         'vector': (5 if quick else 4) * 3 * runs * main_updates,
         # Bundled empirical graphs have 34 + 18 + 15 nodes.
         'empirical': int(67 * float(SIMULATION['main_sweeps']) * 3 * runs),
         'beta': 3 * beta_count * runs * main_updates,
         'alpha': alpha_count * runs * main_updates,
         'mu': mu_count * runs * main_updates,
-        'joint_eps_beta': ((9 if quick else
-                            len(config.JOINT_SWEEP['eps_values'])
-                            * len(config.JOINT_SWEEP['beta_values']))
-                           * runs * main_updates),
-        'joint_p_beta': ((9 if quick else
-                          len(config.JOINT_SWEEP['p_beta_p_values'])
-                          * len(config.JOINT_SWEEP['p_beta_beta_values']))
-                         * runs * main_updates),
+        'joint_eps_beta': (9 if quick else 9 * 5) * runs * main_updates,
+        'joint_p_beta': (9 if quick else 21 * 21) * runs * main_updates,
         'size': int((sum([100, 300]) if quick else
                      sum(config.SENSITIVITY['N_sizes']))
                     * SIMULATION.get('size_sweeps', 200) * runs),
@@ -151,15 +195,9 @@ def estimate_elementary_updates(selected, quick, runs):
 
 
 def run_selected(manager, names, quick=False, runs=None, resume=True):
-    nr = (3 if runs is None else int(runs)) if quick else runs
+    nr = 3 if quick else runs
     nv = 1 if quick else None
     quick_p_values = [0.0, 0.25, 0.5, 0.75, 1.0] if quick else None
-    quick_eps_values = (
-        [float(config.EPSILON_0_GRID[index])
-         for index in (0, len(config.EPSILON_0_GRID) // 2,
-                       len(config.EPSILON_0_GRID) - 1)]
-        if quick else None
-    )
     results = {}
     tasks = {
         "network": lambda: manager.experiment_network_validation(
@@ -167,21 +205,38 @@ def run_selected(manager, names, quick=False, runs=None, resume=True):
         "ablation": lambda: manager.experiment_ablation(
             num_runs=nr, p_values=quick_p_values if quick else None,
             resume=resume),
+        "threshold_control": lambda: manager.experiment_threshold_assignment_controls(
+            num_runs=nr, p_values=quick_p_values if quick else None,
+            resume=resume),
+        "triangle_failure_control": lambda: manager.experiment_triangle_failure_control(
+            num_runs=nr, p_values=quick_p_values if quick else None,
+            resume=resume),
+        "transition_prediction": lambda: manager.experiment_threshold_transition_prediction(
+            num_runs=nr,
+            p_values=quick_p_values if quick else None,
+            eps_values=[0.0, 0.275, 0.55] if quick else None,
+            sweeps_per_epsilon=100.0,
+            resume=resume),
+        "threshold_recovery": lambda: manager.experiment_threshold_recovery(
+            num_runs=nr, p_values=quick_p_values if quick else None,
+            sigma_values=[0.0, 0.10, 0.20] if quick else None,
+            eps_values=[0.10, 0.30, 0.50] if quick else None,
+            resume=resume),
         "epsilon": lambda: manager.experiment_epsilon_sweep(
             num_runs=nr,
             p_values=quick_p_values[:3] if quick else None,
-            eps_values=quick_eps_values,
+            eps_values=[0.05, 0.20, 0.40] if quick else None,
             resume=resume),
         "hysteresis": lambda: manager.experiment_hysteresis_sweep(
             num_runs=nr,
             p_values=quick_p_values if quick else None,
-            eps_values=quick_eps_values,
+            eps_values=[0.05, 0.20, 0.40] if quick else None,
             resume=resume),
         "perturbation": lambda: manager.experiment_perturbation_sweep(
             num_runs=nr,
             p_values=quick_p_values if quick else None,
             sigma_values=[0.0, 0.02, 0.10] if quick else None,
-            eps_values=quick_eps_values,
+            eps_values=[0.05, 0.20, 0.40] if quick else None,
             resume=resume),
         "update_mode": lambda: manager.experiment_update_mode_control(
             num_runs=nr,
@@ -190,6 +245,12 @@ def run_selected(manager, names, quick=False, runs=None, resume=True):
         "community": lambda: manager.experiment_sbm_community_conflict(
             num_runs=nr,
             mixing_values=[0.05, 0.20] if quick else None,
+            resume=resume),
+        "sbm_hysteresis": lambda: manager.experiment_sbm_hysteresis(
+            num_runs=nr,
+            mixing_values=[0.02, 0.20] if quick else None,
+            sigma_values=[0.0, 0.10] if quick else None,
+            eps_values=[0.10, 0.20, 0.40] if quick else None,
             resume=resume),
         "vector": lambda: manager.experiment_vector_opinions(
             num_runs=nr,
@@ -234,6 +295,13 @@ def run_selected(manager, names, quick=False, runs=None, resume=True):
         "perturb": "perturbation", "sigma": "perturbation",
         "synchronous": "update_mode", "sync": "update_mode",
         "sbm": "community", "community_conflict": "community",
+        "sbm_hysteresis": "sbm_hysteresis", "sbm_hyst": "sbm_hysteresis",
+        "community_hysteresis": "sbm_hysteresis",
+        "threshold_assignment": "threshold_control",
+        "thresholds": "threshold_control",
+        "triangle_failure": "triangle_failure_control",
+        "failed_triangle": "triangle_failure_control",
+        "recovery": "threshold_recovery",
         "2d": "vector", "multidimensional": "vector",
         "real": "empirical", "real_network": "empirical",
         "size_robust": "size", "m_robust": "m", "init_dist": "init",
@@ -256,11 +324,7 @@ def run_selected(manager, names, quick=False, runs=None, resume=True):
 
 if __name__ == "__main__":
     args = build_parser().parse_args()
-
-    if not args.only and not args.all:
-        raise SystemExit(
-            "安全停止：请用 --only <实验名...> 选择实验，或用 --all 显式确认全部实验。"
-            "长任务启动前建议先添加 --dry-run 核对规模。")
+    validate_cli_args(args)
 
     if args.N is not None:
         NETWORK['N'] = int(args.N)
@@ -290,10 +354,6 @@ if __name__ == "__main__":
         print(f"[QUICK] N={NETWORK['N']}, main_sweeps={SIMULATION['main_sweeps']}, "
               f"scan_sweeps={SIMULATION['sweep_sweeps']}")
 
-    if args.workers < 1:
-        raise SystemExit("--workers must be at least 1")
-    print(f"[PARALLEL] workers={args.workers}")
-
     if args.output_dir is not None:
         output_root = configure_output_root(args.output_dir)
     elif args.quick:
@@ -305,8 +365,8 @@ if __name__ == "__main__":
 
     if args.dry_run:
         selected = args.only if args.only else ['all']
-        effective_runs = (int(args.runs) if args.runs is not None else
-                          3 if args.quick else
+        effective_runs = (3 if args.quick else
+                          int(args.runs) if args.runs is not None else
                           int(SIMULATION['num_runs']))
         main_updates = int(round(
             NETWORK['N'] * float(SIMULATION['main_sweeps'])))
@@ -317,9 +377,10 @@ if __name__ == "__main__":
         print(f"  N={NETWORK['N']}, m={NETWORK['m']}, runs={effective_runs}")
         print(f"  main_sweeps={SIMULATION['main_sweeps']} ({main_updates} updates/run)")
         print(f"  sweep_sweeps={SIMULATION['sweep_sweeps']} ({scan_updates} updates/epsilon point)")
+        if 'transition_prediction' in selected or 'all' in selected:
+            print("  transition_prediction_sweeps=100 (200000 updates/epsilon point)")
         print(f"  resume={not args.no_resume}, plot={args.plot}")
         print(f"  output_root={output_root}")
-        print(f"  workers={args.workers}")
         estimates = estimate_elementary_updates(
             selected, args.quick, effective_runs)
         if estimates:
@@ -329,11 +390,11 @@ if __name__ == "__main__":
             print(f"    TOTAL: {sum(estimates.values()):,}")
         raise SystemExit(0)
 
-    manager = ExperimentManager(workers=args.workers)
+    manager = ExperimentManager()
 
     if args.only:
         run_selected(manager, args.only, quick=args.quick, runs=args.runs, resume=(not args.no_resume))
-    elif args.all:
+    else:
         manager.run_all(
             quick=args.quick, resume=(not args.no_resume),
             num_runs=args.runs)

@@ -7,6 +7,11 @@ from typing import Iterable, Sequence
 
 import numpy as np
 
+try:  # SciPy is pinned for the formal analyses, but keep a fallback below.
+    from scipy.stats import t as _student_t
+except Exception:  # pragma: no cover - exercised only in minimal installs
+    _student_t = None
+
 
 # Two-sided 95% Student-t critical values for df=1..30.
 _T975 = (
@@ -22,11 +27,24 @@ def _t975(df: int) -> float:
         return 0.0
     if df <= len(_T975):
         return _T975[df - 1]
-    if df <= 60:
-        return 2.000
-    if df <= 120:
-        return 1.980
-    return 1.960
+    if _student_t is not None:
+        value = float(_student_t.ppf(0.975, df))
+        if math.isfinite(value):
+            return value
+
+    # Cornish-Fisher expansion around the normal 97.5% quantile.  This keeps
+    # confidence intervals accurate when SciPy is unavailable instead of
+    # jumping prematurely to the normal 1.96 approximation.
+    z = 1.959963984540054
+    inv_df = 1.0 / float(df)
+    z2 = z * z
+    z3 = z * z2
+    z5 = z3 * z2
+    z7 = z5 * z2
+    return (z + (z3 + z) * inv_df / 4.0
+            + (5.0 * z5 + 16.0 * z3 + 3.0 * z) * inv_df ** 2 / 96.0
+            + (3.0 * z7 + 19.0 * z5 + 17.0 * z3 - 15.0 * z)
+            * inv_df ** 3 / 384.0)
 
 
 def summarize(values: Iterable[float], keep_values: bool = True) -> dict:
@@ -54,6 +72,37 @@ def summarize(values: Iterable[float], keep_values: bool = True) -> dict:
     if keep_values:
         out["values"] = [float(v) for v in arr]
     return out
+
+
+def summarize_proportion(values: Iterable[float]) -> dict:
+    """Summarize binary outcomes with a two-sided 95% Wilson interval."""
+    arr = np.asarray(list(values), dtype=float)
+    if arr.size == 0:
+        raise ValueError("cannot summarize an empty sequence")
+    if np.any((arr != 0.0) & (arr != 1.0)):
+        raise ValueError("proportion outcomes must be binary")
+    n = int(arr.size)
+    successes = int(np.sum(arr))
+    proportion = float(successes / n)
+    z = 1.959963984540054
+    z2 = z * z
+    denominator = 1.0 + z2 / n
+    center = (proportion + z2 / (2.0 * n)) / denominator
+    half_width = z * math.sqrt(
+        proportion * (1.0 - proportion) / n + z2 / (4.0 * n * n)
+    ) / denominator
+    return {
+        "n": n,
+        "successes": successes,
+        "mean": proportion,
+        "se": float(math.sqrt(proportion * (1.0 - proportion) / n)),
+        "ci95_low": float(max(0.0, center - half_width)),
+        "ci95_high": float(min(1.0, center + half_width)),
+        "min": float(np.min(arr)),
+        "max": float(np.max(arr)),
+        "values": [float(value) for value in arr],
+        "interval": "95% Wilson score interval",
+    }
 
 
 def paired_difference(first: Sequence[float], second: Sequence[float]) -> dict:

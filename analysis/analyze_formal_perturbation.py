@@ -7,18 +7,8 @@ import sys
 from pathlib import Path
 
 import matplotlib as mpl
-# The analysis only writes figure files.  Force a non-interactive backend so
-# it also runs on headless/cloud Windows installations without Tcl/Tk.
-mpl.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-
-# NumPy 2.0 introduced ``trapezoid`` and recent releases removed ``trapz``.
-# Keep the analysis runnable with both the original NumPy 1.x environment and
-# the Python 3.13 / NumPy 2.x environment used for the revised simulations.
-_trapezoid = getattr(np, "trapezoid", None)
-if _trapezoid is None:
-    _trapezoid = np.trapz
 from scipy import stats
 
 
@@ -26,23 +16,33 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from statistics_utils import paired_difference, summarize  # noqa: E402
+from statistics_utils import paired_difference  # noqa: E402
 
 
-DATA_PATH = ROOT / "output" / "formal_revision" / "data" / "exp_formal_perturbation_sweep.json"
+DATA_PATH = ROOT / "output" / "formal_revision" / "data" / "exp_formal_perturbation_sweep_revision_v2.json"
 ANALYSIS_DIR = ROOT / "output" / "formal_revision" / "analysis"
 FIGURE_DIR = ROOT / "output" / "formal_revision" / "figures"
 
 
 def pvalue(values):
     arr = np.asarray(values, dtype=float)
-    if len(arr) < 2 or np.allclose(arr, arr[0]):
-        return 1.0 if np.allclose(arr, 0.0) else 0.0
-    return float(stats.ttest_1samp(arr, 0.0).pvalue)
+    if arr.ndim != 1 or arr.size == 0 or not np.all(np.isfinite(arr)):
+        raise ValueError("paired differences must be a finite non-empty vector")
+    if arr.size < 2 or np.all(arr == arr[0]):
+        return 1.0 if np.all(arr == 0.0) else 0.0
+    p_value = float(stats.ttest_1samp(arr, 0.0).pvalue)
+    return 1.0 if not np.isfinite(p_value) else p_value
 
 
 def holm(p_values):
     p_values = np.asarray(p_values, dtype=float)
+    if p_values.ndim != 1:
+        raise ValueError("p-values must be a one-dimensional vector")
+    if p_values.size == 0:
+        return []
+    if (not np.all(np.isfinite(p_values))
+            or np.any((p_values < 0.0) | (p_values > 1.0))):
+        raise ValueError("p-values must be finite and lie in [0, 1]")
     order = np.argsort(p_values)
     out = np.empty_like(p_values)
     running = 0.0
@@ -78,7 +78,7 @@ def paired_metric(block, metric, eps_values, low_eps):
     if metric == "backward_auc":
         curves = []
         for idx in range(block["num_runs"]):
-            curves.append(_trapezoid(
+            curves.append(np.trapz(
                 [block["backward"][qkey(e)]["values"][idx] for e in eps_values],
                 eps_values))
         return curves

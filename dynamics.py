@@ -8,17 +8,18 @@ import numpy as np
 
 
 class TrustThreshold:
-    """2. 饱和信任阈值模型
+    """2. 结构依赖、边特异的有效阈值
     
-    实现基于边权重的动态阈值机制：
+    实现基于边权重的结构依赖、边特异有效阈值：
     ε_eff(w_ij) = ε₀ + (1 - ε₀) · (1 - exp(-α · w_ij))
     
     其中：
     - ε₀: 基础容忍阈值
     - α: 权重敏感度指数
-    - w_ij: 边 (i,j) 的权重
+    - w_ij: 边 (i,j) 的 Jaccard 权重，取值 [0, 1]
     
-    有效阈值严格限制在 [0, 1] 区间
+    有效阈值上界为 ε_eff(1) = ε₀ + (1 - ε₀)(1 - e^{-α})，严格小于 1；
+    实际取值区间为 [ε₀, ε_eff(1)]。
     """
 
     def __init__(self, epsilon_0, alpha=3.5):
@@ -28,6 +29,12 @@ class TrustThreshold:
             epsilon_0: 基础容忍阈值
             alpha: 权重敏感度指数（默认3.5）
         """
+        epsilon_0 = float(epsilon_0)
+        alpha = float(alpha)
+        if not np.isfinite(epsilon_0) or not 0.0 <= epsilon_0 <= 1.0:
+            raise ValueError("epsilon_0 must lie in [0, 1]")
+        if not np.isfinite(alpha) or alpha < 0.0:
+            raise ValueError("alpha must be finite and non-negative")
         self.epsilon_0 = epsilon_0  # 存储基础阈值
         self.alpha = alpha          # 存储敏感度指数
 
@@ -39,8 +46,11 @@ class TrustThreshold:
         参数:
             w_ij: 边权重（0-1之间的值）
         返回:
-            有效阈值（ε₀ 到 1 之间的值）
+            有效阈值（[ε₀, ε_eff(1)] 区间内的值，上界严格小于 1）
         """
+        w_ij = float(w_ij)
+        if not np.isfinite(w_ij) or not 0.0 <= w_ij <= 1.0:
+            raise ValueError("w_ij must lie in [0, 1]")
         # 使用指数函数实现平滑过渡
         return self.epsilon_0 + (1.0 - self.epsilon_0) * (1.0 - np.exp(-self.alpha * w_ij))
 
@@ -64,8 +74,12 @@ class OpinionDynamics:
         'baseline':       '_step_baseline',
         'weighted_bcm':   '_step_weighted_bcm',
         'threshold_only': '_step_threshold_only',
+        'mean_threshold_only': '_step_threshold_only',
+        'randomized_threshold_only': '_step_threshold_only',
         'bcm_triangle':   '_step_bcm_triangle',
         'full_model':     '_step_full_model',
+        'full_model_no_triangle_fallback':
+            '_step_full_model_no_triangle_fallback',
         'no_triadic_feedback': '_step_no_triadic_feedback',
         # config 中可能使用的别名
         'baseline_dw':    '_step_baseline',
@@ -73,9 +87,8 @@ class OpinionDynamics:
         'trust':          '_step_threshold_only',
         'trust_only':     '_step_threshold_only',
         'triangle_fixed': '_step_bcm_triangle',
-        'triangle_only':  '_step_no_triadic_feedback',
-        # Legacy compatibility only; new runs must use the explicit name.
         'no_structure':   '_step_no_triadic_feedback',
+        'triangle_only':  '_step_no_triadic_feedback',
         'triangle':       '_step_no_triadic_feedback',
         'full':           '_step_full_model',
         # 更多安全别名
@@ -84,7 +97,7 @@ class OpinionDynamics:
 
     def __init__(self, G, opinions, weights, triangles_list, node_triangles,
                  clustering, trust_model, mu=0.5, beta=3.0,
-                 model_type='full_model'):
+                 model_type='full_model', edge_thresholds=None):
         """初始化意见动力学引擎
         
         参数:
@@ -106,8 +119,13 @@ class OpinionDynamics:
         self.node_triangles = node_triangles # 存储节点三角形映射
         self.clustering = clustering         # 存储聚类系数
         self.trust = trust_model             # 存储信任阈值模型
-        self.mu = mu                         # 存储基础步长
-        self.beta = beta                     # 存储第三方不一致衰减系数
+        self.edge_thresholds = edge_thresholds
+        self.mu = float(mu)                   # 存储基础步长
+        self.beta = float(beta)               # 存储第三方不一致衰减系数
+        if not np.isfinite(self.mu) or not 0.0 <= self.mu <= 1.0:
+            raise ValueError("mu must be finite and lie in [0, 1]")
+        if not np.isfinite(self.beta) or self.beta < 0.0:
+            raise ValueError("beta must be finite and non-negative")
         self.model_type = model_type         # 存储模型类型
         self.nodes = list(G.nodes())         # 获取节点列表
         self.N = len(self.nodes)             # 存储节点总数
@@ -122,7 +140,9 @@ class OpinionDynamics:
             'edge_count': 0,      # 边交互次数
             'tri_count': 0,       # 三角形交互尝试次数
             'tri_success': 0,     # 三角形交互成功次数
-            'tri_fallback': 0,    # 三角形交互失败回退次数
+            'tri_fallback': 0,    # 三角形交互失败次数
+            'tri_fallback_edge_update': 0,  # 失败后回退二人更新成功次数
+            'tri_fallback_suppressed': 0,   # 禁用回退而未更新次数
             'update_count': 0     # 意见更新总次数
         }
 
@@ -138,12 +158,6 @@ class OpinionDynamics:
         """
         # 首先尝试精确匹配
         method_name = self._METHOD_ALIAS.get(model_type)
-        if model_type == 'no_structure':
-            import warnings
-            warnings.warn(
-                "model alias 'no_structure' is deprecated; use "
-                "'no_triadic_feedback'",
-                DeprecationWarning, stacklevel=2)
         if method_name is not None:
             return getattr(self, method_name)
 
@@ -257,6 +271,17 @@ class OpinionDynamics:
         self.stats['edge_count'] += 1
         self._edge_interaction(i, rng)
 
+    def _edge_threshold(self, u, v):
+        """Return the configured threshold for one undirected edge."""
+        edge_thresholds = getattr(self, 'edge_thresholds', None)
+        if edge_thresholds is not None:
+            if (u, v) in edge_thresholds:
+                return edge_thresholds[(u, v)]
+            if (v, u) in edge_thresholds:
+                return edge_thresholds[(v, u)]
+        weight = self.weights.get((u, v), self.weights.get((v, u), 0.0))
+        return self.trust.effective_threshold(weight)
+
     # ----- bcm_triangle: 固定阈值 + 三角触发，无第三方衰减 -----
     def _step_bcm_triangle(self, i, rng):
         """BCM + Triangle 模型
@@ -314,25 +339,23 @@ class OpinionDynamics:
 
     # ----- Full Model: 完整模型 -----
     def _step_full_model(self, i, rng):
-        """完整模型
-        
-        包含所有机制：结构依赖阈值 + 局部聚类触发 + 第三方不一致衰减。
-        
-        参数:
-            i: 当前更新的节点
-            rng: 随机数生成器
-        """
-        # 获取节点的局部聚类系数
-        C_i = self.clustering.get(i, 0.0)
-        # 检查节点是否有三角形
-        has_triangles = (i in self.node_triangles and len(self.node_triangles[i]) > 0)
+        """完整模型：失败三角门后执行原有二人回退。"""
+        self._step_full_model_variant(i, rng, fallback_to_edge=True)
 
-        # 以概率 C_i 尝试三角形交互（高阶结构优先）
+    def _step_full_model_no_triangle_fallback(self, i, rng):
+        """对照模型：失败三角门后不执行二人回退。"""
+        self._step_full_model_variant(i, rng, fallback_to_edge=False)
+
+    def _step_full_model_variant(self, i, rng, fallback_to_edge):
+        C_i = self.clustering.get(i, 0.0)
+        has_triangles = (i in self.node_triangles and
+                         len(self.node_triangles[i]) > 0)
+
         if rng.rand() < C_i and has_triangles:
             self.stats['tri_count'] += 1
-            self._triangle_interaction(i, rng)
+            self._triangle_interaction(
+                i, rng, fallback_to_edge=fallback_to_edge)
         else:
-            # 否则执行普通边交互
             self.stats['edge_count'] += 1
             self._edge_interaction(i, rng)
 
@@ -356,27 +379,17 @@ class OpinionDynamics:
         
     # ----- 3.2 普通边交互 -----
     def _edge_interaction(self, i, rng):
-        """执行普通边交互
-        
-        使用动态饱和阈值的边更新规则。
-        
-        参数:
-            i: 当前更新的节点
-            rng: 随机数生成器
-        """
-        # 随机选择邻居
+        """执行普通边交互，并返回该二人门是否通过。"""
         j = self.neighbors[i][rng.randint(len(self.neighbors[i]))]
-        # 获取边权重
-        w = self.weights.get((i, j), 0.0)
-        # 计算动态阈值
-        eps = self.trust.effective_threshold(w)
-        # 检查意见差异
-        if abs(self.opinions[i] - self.opinions[j]) <= eps:
+        eps = self._edge_threshold(i, j)
+        accepted = abs(self.opinions[i] - self.opinions[j]) <= eps
+        if accepted:
             self.opinions[i] += self.mu * (self.opinions[j] - self.opinions[i])
             self.stats['update_count'] += 1
+        return bool(accepted)
 
     # ----- 3.3 三角形交互（第三方不一致衰减） -----
-    def _triangle_interaction(self, i, rng):
+    def _triangle_interaction(self, i, rng, fallback_to_edge=True):
         """执行三角形交互
         
         在三角形结构中进行三方交互，包含第三方不一致衰减。
@@ -400,8 +413,7 @@ class OpinionDynamics:
         # 检查三角形内所有边是否满足阈值条件
         all_ok = True
         for a, b in pairs:
-            w_ab = self.weights.get((a, b), 0.0)
-            eps_ab = self.trust.effective_threshold(w_ab)
+            eps_ab = self._edge_threshold(a, b)
             if abs(self.opinions[a] - self.opinions[b]) > eps_ab:
                 all_ok = False
                 break
@@ -421,14 +433,20 @@ class OpinionDynamics:
                 self.opinions[j] - self.opinions[i]) * attenuation
             self.stats['update_count'] += 1
         else:
-            # 三角形条件不满足，回退到边交互
             self.stats['tri_fallback'] += 1
-            self._edge_interaction(i, rng)
+            if fallback_to_edge:
+                if self._edge_interaction(i, rng):
+                    self.stats['tri_fallback_edge_update'] += 1
+            else:
+                self.stats['tri_fallback_suppressed'] += 1
+                # Consume the same neighbor draw as the fallback arm, keeping
+                # subsequent random-number use aligned across the two controls.
+                rng.randint(len(self.neighbors[i]))
 
     def _triangle_interaction_no_feedback(self, i, rng):
         """执行无第三方不一致衰减的三角形交互。
 
-        三角形选择、三边动态阈值检查和失败回退与 Full Model 相同；
+        三角形选择、三边结构依赖阈值检查和失败回退与 Full Model 相同；
         唯一区别是成功后三角更新使用 Phi=1。
         """
         tri_indices = self.node_triangles[i]
@@ -442,8 +460,7 @@ class OpinionDynamics:
 
         all_ok = True
         for a, b in pairs:
-            w_ab = self.weights.get((a, b), 0.0)
-            eps_ab = self.trust.effective_threshold(w_ab)
+            eps_ab = self._edge_threshold(a, b)
             if abs(self.opinions[a] - self.opinions[b]) > eps_ab:
                 all_ok = False
                 break

@@ -1,0 +1,280 @@
+{
+  "pdf": "fig_formal_threshold_assignment_controls.pdf",
+  "minimum_font_pt": 5.0,
+  "text_lines_checked": 54,
+  "verdict": "PASS",
+  "errors": [],
+  "warnings": [],
+  "text_lines": [
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.6",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.8",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "p_HK",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.6",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.8",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "Mean (95% CI)",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "a",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "Terminal order parameter",
+      "minimum_font_pt": 7.5
+    },
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.6",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.8",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "p_HK",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "−0.3",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "−0.2",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "−0.1",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.1",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.3",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "Structured minus control (95% CI)",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "b",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "Order-parameter contrast",
+      "minimum_font_pt": 7.5
+    },
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.6",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.8",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "p_HK",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "−1",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "2",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "3",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "4",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "Structured minus control (95% CI)",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "c",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "Cluster-count contrast",
+      "minimum_font_pt": 7.5
+    },
+    {
+      "page": 1,
+      "text": "Does structural assignment of edge thresholds matter?",
+      "minimum_font_pt": 8.5
+    },
+    {
+      "page": 1,
+      "text": "Edge-specific",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "Mean threshold",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "Shuffled thresholds",
+      "minimum_font_pt": 6.0
+    }
+  ]
+}

@@ -40,7 +40,6 @@ def main():
         skey = "{:.3f}".format(sigma)
         for p in p_values:
             pkey = "{:.2f}".format(p)
-            low_eps = str(eps_values[0])
             condition = [payloads[h]["data"][skey][pkey] for h in horizons]
             low_op = {h: values(condition[i], "backward", eps_values[0])
                       for i, h in enumerate(horizons)}

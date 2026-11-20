@@ -1,0 +1,295 @@
+{
+  "pdf": "fig_formal_triangle_failure_control.pdf",
+  "minimum_font_pt": 5.0,
+  "text_lines_checked": 57,
+  "verdict": "PASS",
+  "errors": [],
+  "warnings": [],
+  "text_lines": [
+    {
+      "page": 1,
+      "text": "p_HK",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.6",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.8",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "Mean (95% CI)",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "a",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "Terminal order parameter",
+      "minimum_font_pt": 7.5
+    },
+    {
+      "page": 1,
+      "text": "full_model",
+      "minimum_font_pt": 5.800000190734863
+    },
+    {
+      "page": 1,
+      "text": "full_model_no_triangle_fallback",
+      "minimum_font_pt": 5.800000190734863
+    },
+    {
+      "page": 1,
+      "text": "p_HK",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "−0.05",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.00",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.05",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.10",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.15",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "Full minus no-fallback (95% CI)",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "b",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "Order-parameter contrast",
+      "minimum_font_pt": 7.5
+    },
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.6",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.8",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "p_HK",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "−2.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "−1.5",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "−1.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "−0.5",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.5",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1.5",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "Full minus no-fallback (95% CI)",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "c",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "Cluster-count contrast",
+      "minimum_font_pt": 7.5
+    },
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.6",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.8",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "p_HK",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.6",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "0.8",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1.0",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "Fraction of failed gates (95% CI)",
+      "minimum_font_pt": 7.0
+    },
+    {
+      "page": 1,
+      "text": "d",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "Accepted updates after failed gates",
+      "minimum_font_pt": 7.5
+    },
+    {
+      "page": 1,
+      "text": "Accepted dyadic fallback",
+      "minimum_font_pt": 5.599999904632568
+    },
+    {
+      "page": 1,
+      "text": "What changes when a failed triangle does not fall back to a dyad?",
+      "minimum_font_pt": 8.5
+    }
+  ]
+}

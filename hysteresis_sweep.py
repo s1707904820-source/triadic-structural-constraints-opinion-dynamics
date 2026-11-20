@@ -32,7 +32,7 @@ def main():
     print(f"  每点运行次数: {num_runs}")
     print(f"  每个epsilon点扫描sweeps: {SIMULATION.get('sweep_sweeps')}")
     print(f"  后向扰动强度: {SIMULATION.get('backward_perturb_sigma', 0.0)}")
-    print(f"  后向每步扰动: {SIMULATION.get('backward_perturb_each_step', True)}")
+    print(f"  后向每步扰动: {SIMULATION.get('backward_perturb_each_step', False)}")
 
     manager = ExperimentManager()
     manager.experiment_hysteresis_sweep(

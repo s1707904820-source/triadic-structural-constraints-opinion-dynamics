@@ -12,13 +12,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-
-# NumPy 2.0 introduced ``trapezoid`` and recent releases removed ``trapz``.
-# Keep the analysis runnable with both the original NumPy 1.x environment and
-# the Python 3.13 / NumPy 2.x environment used for the revised simulations.
-_trapezoid = getattr(np, "trapezoid", None)
-if _trapezoid is None:
-    _trapezoid = np.trapz
 from scipy import stats
 
 
@@ -111,13 +104,21 @@ def summarize(values):
 
 def paired_p(values):
     values = np.asarray(values, dtype=float)
-    if np.allclose(values, values[0]):
-        return 1.0 if math.isclose(float(values[0]), 0.0) else 0.0
-    return float(stats.ttest_1samp(values, 0.0).pvalue)
+    if values.ndim != 1 or values.size == 0 or not np.all(np.isfinite(values)):
+        raise ValueError("paired differences must be a finite non-empty vector")
+    if np.all(values == values[0]):
+        return 1.0 if values[0] == 0.0 else 0.0
+    p_value = float(stats.ttest_1samp(values, 0.0).pvalue)
+    return 1.0 if not math.isfinite(p_value) else p_value
 
 
 def holm_adjust(p_values):
     p_values = np.asarray(p_values, dtype=float)
+    if p_values.size == 0:
+        return []
+    if (p_values.ndim != 1 or not np.all(np.isfinite(p_values))
+            or np.any((p_values < 0.0) | (p_values > 1.0))):
+        raise ValueError("p-values must be finite and lie in [0, 1]")
     order = np.argsort(p_values)
     adjusted = np.empty_like(p_values)
     running = 0.0
@@ -142,7 +143,7 @@ def time_mean_auc(sweeps, values, start=None, end=None):
     if x_values.size < 2 or not math.isclose(float(x_values[0]), float(start)) \
             or not math.isclose(float(x_values[-1]), float(end)):
         raise ValueError("segment boundaries must occur in the saved sweep grid")
-    return float(_trapezoid(y_values, x_values) / (float(end) - float(start)))
+    return float(np.trapz(y_values, x_values) / (float(end) - float(start)))
 
 
 def seed_run(raw, p_hk, model, seed):
@@ -308,7 +309,7 @@ def build_outputs(raw, validation):
             surface_values = []
             for seed in seeds:
                 curve = [per_seed_by_p[seed][p_hk] for p_hk in P_VALUES]
-                surface_values.append(float(_trapezoid(curve, P_VALUES)))
+                surface_values.append(float(np.trapz(curve, P_VALUES)))
             surface_summary = summarize(surface_values)
             surface_p = paired_p(surface_values)
             global_row = {
@@ -359,7 +360,7 @@ def build_outputs(raw, validation):
                         - time_mean_auc(
                             comparator_series["sweep"],
                             comparator_series["order_param"], start, end))
-                differences.append(float(_trapezoid(p_curve, P_VALUES)))
+                differences.append(float(np.trapz(p_curve, P_VALUES)))
             summary = summarize(differences)
             raw_p = paired_p(differences)
             raw_p_values.append(raw_p)
@@ -436,7 +437,7 @@ def build_outputs(raw, validation):
                     curve.append(
                         full_series["order_param"][index]
                         - comparator_series["order_param"][index])
-                differences.append(float(_trapezoid(curve, P_VALUES)))
+                differences.append(float(np.trapz(curve, P_VALUES)))
             summary = summarize(differences)
             raw_p = paired_p(differences)
             global_p_values.append(raw_p)

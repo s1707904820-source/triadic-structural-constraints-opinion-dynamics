@@ -289,7 +289,10 @@ class NetworkGenerator:
             # 计算从每个采样节点到其他所有节点的最短路径
             for s in nodes_sample:
                 sp = nx.single_source_shortest_path_length(subG, s)
-                lengths.extend(sp.values())
+                # Average path length is defined over distinct node pairs;
+                # do not include the zero-length self distance.
+                lengths.extend(distance for target, distance in sp.items()
+                               if target != s)
             props['avg_path_length'] = float(np.mean(lengths))
         except Exception:
             # 计算失败时返回 NaN
