@@ -1,4 +1,4 @@
-"""Validate the manuscript's unweighted gate-valid energy counterexample."""
+"""Construct a gate-valid counterexample to global energy monotonicity."""
 
 from __future__ import annotations
 
@@ -23,17 +23,17 @@ JSON_PATH = OUTPUT_DIR / "formal_local_energy_counterexample.json"
 REPORT_PATH = OUTPUT_DIR / "FORMAL_LOCAL_ENERGY_COUNTEREXAMPLE.md"
 
 
-def global_edge_energy(graph, opinions):
-    """Return 1/2 times the unweighted sum of squared edge differences."""
-    return float(0.5 * sum(
-        (opinions[u] - opinions[v]) ** 2 for u, v in graph.edges()
+def weighted_global_edge_energy(graph, weights, opinions):
+    return float(sum(
+        weights[(u, v)] * (opinions[u] - opinions[v]) ** 2
+        for u, v in graph.edges()
     ))
 
 
-def local_edge_energy(graph, opinions, node):
-    """Return the manuscript's unweighted incident-edge energy."""
-    return float(0.5 * sum(
-        (opinions[node] - opinions[neighbor]) ** 2
+def weighted_local_edge_energy(graph, weights, opinions, node):
+    return float(sum(
+        weights[(node, neighbor)]
+        * (opinions[node] - opinions[neighbor]) ** 2
         for neighbor in graph.neighbors(node)
     ))
 
@@ -66,23 +66,37 @@ def main():
             "passes": bool(gap <= threshold),
         }
 
-    local_before = local_edge_energy(graph, before_opinions, i)
-    local_after = local_edge_energy(graph, after_opinions, i)
-    global_before = global_edge_energy(graph, before_opinions)
-    global_after = global_edge_energy(graph, after_opinions)
-    selected_before = 0.5 * (
+    local_before = weighted_local_edge_energy(
+        graph, weights, before_opinions, i)
+    local_after = weighted_local_edge_energy(
+        graph, weights, after_opinions, i)
+    global_before = weighted_global_edge_energy(
+        graph, weights, before_opinions)
+    global_after = weighted_global_edge_energy(
+        graph, weights, after_opinions)
+    selected_before = weights[(i, j)] * (
         before_opinions[i] - before_opinions[j]) ** 2
-    selected_after = 0.5 * (
+    selected_after = weights[(i, j)] * (
         after_opinions[i] - after_opinions[j]) ** 2
 
-    degree_i = int(graph.degree[i])
-    incident_sum = float(sum(
-        before_opinions[i] - before_opinions[neighbor]
-        for neighbor in graph.neighbors(i)
+    other_neighbors = [node for node in graph.neighbors(i) if node != j]
+    W = float(sum(weights[(i, node)] for node in other_neighbors))
+    S = float(sum(
+        weights[(i, node)]
+        * (before_opinions[i] - before_opinions[node])
+        for node in other_neighbors
     ))
-    condition_left = float(d * incident_sum)
-    condition_right = float(
-        -0.5 * degree_i * update_fraction * d ** 2)
+    weighted_other_mean = float(sum(
+        weights[(i, node)] * before_opinions[node]
+        for node in other_neighbors
+    ) / W)
+    bracket = float(
+        weights[(i, j)] * (2.0 - update_fraction)
+        - update_fraction * W)
+    weak_deviation_bound = float(
+        bracket * abs(d) / (2.0 * W)) if W > 0 and bracket >= 0 else None
+    actual_deviation = float(abs(
+        before_opinions[i] - weighted_other_mean))
 
     payload = {
         "graph": "three-node complete graph K3",
@@ -115,12 +129,16 @@ def main():
             "after": global_after,
             "change": float(global_after - global_before),
         },
-        "exact_unweighted_local_nonincrease_condition": {
-            "degree_i": degree_i,
-            "incident_disagreement_sum": incident_sum,
-            "left_side": condition_left,
-            "right_side": condition_right,
-            "condition_satisfied": bool(condition_left <= condition_right),
+        "weak_deviation_condition": {
+            "other_neighbor_weight_sum_W": W,
+            "cross_term_sum_S": S,
+            "weighted_other_neighbor_mean": weighted_other_mean,
+            "bracket_wij_2_minus_q_minus_qW": bracket,
+            "sufficient_absolute_deviation_bound": weak_deviation_bound,
+            "actual_absolute_deviation": actual_deviation,
+            "bound_satisfied": bool(
+                weak_deviation_bound is not None
+                and actual_deviation <= weak_deviation_bound),
         },
         "validation": {
             "triangle_trigger_probability_is_one": bool(
@@ -142,16 +160,21 @@ def main():
         handle.write("# 局部能量非单调性的可复核反例\n\n")
         handle.write("## 精确条件\n\n")
         handle.write(
-            "正文采用不加权局部能量 E_i=(1/2)sum_l(x_i-x_l)^2。"
-            "对三角更新 x_i'=x_i+mu Phi_ijk d，记 d=x_j-x_i，"
-            "k_i 为节点 i 的度，则\n\n")
+            "令 q 表示一次更新的实际步长比例。普通边更新中 q=mu；"
+            "完整三角更新中 q=mu Phi_ijk。记 d=x_j-x_i，"
+            "W=sum_{l!=j} w_il，S=sum_{l!=j} w_il(x_i-x_l)。则\n\n")
         handle.write(
-            "Delta E_i = mu Phi_ijk d sum_l(x_i-x_l) "
-            "+ (k_i mu^2 Phi_ijk^2/2)d^2.\n\n")
+            "Delta V_E^(i) = q[-w_ij(2-q)d^2 + 2dS + qWd^2].\n\n")
         handle.write(
-            "因此局部能量不增加当且仅当 d sum_l(x_i-x_l) <= "
-            "-(k_i mu Phi_ijk/2)d^2。该条件取决于当前局部意见配置，"
-            "并不是异步随机更新自动满足的性质。\n\n")
+            "因此局部能量不增加的精确方向性条件是 "
+            "2dS <= [w_ij(2-q)-qW]d^2。若以其他邻居的加权均值"
+            " xbar 定义 S=W(x_i-xbar)，一个便于报告的充分条件是\n\n")
+        handle.write(
+            "w_ij(2-q)-qW >= 0，且 |x_i-xbar| <= "
+            "[w_ij(2-q)-qW]|d|/(2W)。\n\n")
+        handle.write(
+            "这一定量条件说明原稿中的交叉项近似消失，实质上要求更新节点"
+            "接近其余邻居的加权意见均值；它不是异步随机更新自动满足的性质。\n\n")
         handle.write("## Full Model 数值反例\n\n")
         handle.write(
             "取三节点完全图K3，i=0、j=1、k=2，意见分别为0.4、0.6、0.0。"
@@ -160,7 +183,7 @@ def main():
             "均小于有效阈值{:.6f}，所以三角更新合法。\n\n".format(
                 gates["0-1"]["effective_threshold"]))
         handle.write(
-            "Phi_ijk={:.6f}，mu Phi_ijk={:.6f}，更新后x_i'={:.6f}。"
+            "Phi_ijk={:.6f}，q=lambda={:.6f}，更新后x_i'={:.6f}。"
             "被选边能量由{:.6f}降至{:.6f}，但节点i的完整局部边能量"
             "由{:.6f}升至{:.6f}，变化量为+{:.6f}。由于边j-k未变化，"
             "全图无向边能量也增加相同数值。\n\n".format(
@@ -177,12 +200,11 @@ def main():
             "for the asynchronous network process, because moving the updated node "
             "toward the selected source can simultaneously increase its disagreement "
             "with other neighbours. The exact local-energy change contains a "
-            "direction-dependent cross term. The exact configuration-dependent "
-            "non-increase condition is given in the Supplementary Methods, together "
-            "with a three-node "
+            "direction-dependent cross term. A sufficient weak-deviation condition "
+            "is given in the Supplementary Methods, together with a three-node "
             "counterexample in which all triadic gates are satisfied, the selected "
             "edge energy decreases, but both the complete incident-edge energy and "
-            "the global unweighted edge energy increase.\n")
+            "the global weighted edge energy increase.\n")
 
     print("VALIDATION=PASS")
     print("SELECTED_EDGE_CHANGE={:.12g}".format(

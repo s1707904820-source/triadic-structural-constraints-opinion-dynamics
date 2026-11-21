@@ -1,0 +1,150 @@
+{
+  "pdf": "fig_formal_threshold_recovery.pdf",
+  "minimum_font_pt": 5.0,
+  "text_lines_checked": 28,
+  "verdict": "PASS",
+  "errors": [],
+  "warnings": [],
+  "text_lines": [
+    {
+      "page": 1,
+      "text": "0.1",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.3",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.5",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "Threshold epsilon",
+      "minimum_font_pt": 8.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.5",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "1.0",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "Recovery probability",
+      "minimum_font_pt": 8.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "a",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "0.1",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.3",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.5",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "Threshold epsilon",
+      "minimum_font_pt": 8.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "20",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "40",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "60",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "80",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "100",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "Kaplan-Meier RMST (sweeps)",
+      "minimum_font_pt": 8.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "b",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "pHK = 0.0",
+      "minimum_font_pt": 8.5
+    },
+    {
+      "page": 1,
+      "text": "pHK = 0.4",
+      "minimum_font_pt": 8.5
+    },
+    {
+      "page": 1,
+      "text": "pHK = 0.8",
+      "minimum_font_pt": 8.5
+    }
+  ]
+}

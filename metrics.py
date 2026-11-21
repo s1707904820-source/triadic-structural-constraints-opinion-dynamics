@@ -291,7 +291,9 @@ class Metrics:
         return count / len(triangles_list)
 
     @staticmethod
-    def triangle_admissibility_adaptive(opinions_dict, triangles_list, weights, trust_model):
+    def triangle_admissibility_adaptive(
+            opinions_dict, triangles_list, weights, trust_model,
+            edge_thresholds=None):
         """
         规则相关的三角形可交互率：三条边均满足各自的结构依赖阈值。
         
@@ -311,8 +313,13 @@ class Metrics:
             pairs = [(i, j), (j, k), (i, k)]
             ok = True
             for a, b in pairs:
-                w = weights.get((a, b), weights.get((b, a), 0.0))
-                eps = trust_model.effective_threshold(w)
+                if edge_thresholds is not None and (a, b) in edge_thresholds:
+                    eps = edge_thresholds[(a, b)]
+                elif edge_thresholds is not None and (b, a) in edge_thresholds:
+                    eps = edge_thresholds[(b, a)]
+                else:
+                    w = weights.get((a, b), weights.get((b, a), 0.0))
+                    eps = trust_model.effective_threshold(w)
                 if abs(opinions_dict[a] - opinions_dict[b]) > eps:
                     ok = False
                     break
@@ -370,12 +377,6 @@ class Metrics:
 
     @staticmethod
     def reputation_fragmentation(opinions_dict, G, beta, rng=None):
-        """Deprecated compatibility name; use edge_disagreement_penalty."""
-        import warnings
-        warnings.warn(
-            "reputation_fragmentation is deprecated; use "
-            "edge_disagreement_penalty",
-            DeprecationWarning, stacklevel=2)
         return Metrics.edge_disagreement_penalty(
             opinions_dict, G, beta, rng=rng
         )

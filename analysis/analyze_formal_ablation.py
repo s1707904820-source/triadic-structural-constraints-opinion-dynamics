@@ -11,21 +11,20 @@ import csv
 import hashlib
 import json
 import math
-import os
 from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-
-# NumPy 2.0 introduced ``trapezoid`` and recent releases removed ``trapz``.
-# Keep the analysis runnable with both the original NumPy 1.x environment and
-# the Python 3.13 / NumPy 2.x environment used for the revised simulations.
-_trapezoid = getattr(np, "trapezoid", None)
-if _trapezoid is None:
-    _trapezoid = np.trapz
 from scipy import stats
+
+matplotlib.rcParams.update({
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Arial", "DejaVu Sans", "Liberation Sans"],
+    "pdf.fonttype": 42,
+    "svg.fonttype": "none",
+})
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -77,11 +76,7 @@ TIME_SERIES_METRICS = [
     "mean_abs_dx",
     "accepted_update_rate",
 ]
-TIME_SERIES_MODELS = [
-    "threshold_only",
-    "no_triadic_feedback",
-    "full_model",
-]
+TIME_SERIES_MODELS = list(MODEL_ORDER)
 REPRESENTATIVE_P = [0.0, 0.1, 0.2, 0.6, 1.0]
 PRIMARY_CONTRASTS = [
     ("no_triadic_feedback", "Full - No Triadic Feedback"),
@@ -101,6 +96,21 @@ def sha256(path):
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def save_figure_formats(fig, base_path):
+    """Export a figure as a 300-dpi PNG and editable PDF/SVG files."""
+    base_path = Path(base_path)
+    base_path.parent.mkdir(parents=True, exist_ok=True)
+    outputs = [
+        (base_path.with_suffix(".png"), {"dpi": 300}),
+        (base_path.with_suffix(".pdf"), {}),
+        (base_path.with_suffix(".svg"), {}),
+    ]
+    for output_path, options in outputs:
+        fig.savefig(
+            str(output_path), bbox_inches="tight", **options)
+    return [str(output_path) for output_path, _ in outputs]
 
 
 def close(a, b, atol=1e-12):
@@ -138,13 +148,21 @@ def summarize(values):
 
 def paired_t_pvalue(values):
     values = np.asarray(values, dtype=float)
-    if np.allclose(values, values[0]):
-        return 1.0 if close(values[0], 0.0) else 0.0
-    return float(stats.ttest_1samp(values, 0.0).pvalue)
+    if values.ndim != 1 or values.size == 0 or not np.all(np.isfinite(values)):
+        raise ValueError("paired differences must be a finite non-empty vector")
+    if np.all(values == values[0]):
+        return 1.0 if values[0] == 0.0 else 0.0
+    p_value = float(stats.ttest_1samp(values, 0.0).pvalue)
+    return 1.0 if not math.isfinite(p_value) else p_value
 
 
 def holm_adjust(p_values):
     p_values = np.asarray(p_values, dtype=float)
+    if p_values.size == 0:
+        return []
+    if (p_values.ndim != 1 or not np.all(np.isfinite(p_values))
+            or np.any((p_values < 0.0) | (p_values > 1.0))):
+        raise ValueError("p-values must be finite and lie in [0, 1]")
     order = np.argsort(p_values)
     adjusted = np.empty_like(p_values)
     running = 0.0
@@ -210,6 +228,7 @@ def validate(data, metadata):
             if control.get(field) != expected:
                 errors.append("control {} mismatch at p={}".format(field, key))
 
+        reference_sweeps = None
         for model in MODEL_ORDER:
             model_block = block.get(model)
             if not isinstance(model_block, dict):
@@ -239,6 +258,24 @@ def validate(data, metadata):
             if not sweeps or not close(sweeps[-1], 200.0):
                 errors.append("time series does not end at 200 sweeps for {} p={}".format(
                     model, key))
+            if reference_sweeps is None:
+                reference_sweeps = sweeps
+            elif sweeps != reference_sweeps:
+                errors.append("time-series sweep grid mismatch for {} p={}".format(
+                    model, key))
+            for metric in TIME_SERIES_METRICS:
+                summary = series.get(metric, {})
+                for field in ("mean", "sd", "se", "ci95_low", "ci95_high"):
+                    values = summary.get(field, [])
+                    if len(values) != len(sweeps):
+                        errors.append(
+                            "time-series {} {} length mismatch for p={}".format(
+                                model, metric, key))
+                        continue
+                    if not np.all(np.isfinite(np.asarray(values, dtype=float))):
+                        errors.append(
+                            "non-finite time-series {} {} for p={}".format(
+                                model, metric, key))
 
         comparisons = block.get("_paired_comparisons", {})
         for comparator in MODEL_ORDER:
@@ -348,8 +385,8 @@ def build_outputs(data, metadata, validation):
                     data[str(p)][comparator][metric]["values"][index]
                     for p in p_values
                 ]
-                full_auc.append(float(_trapezoid(full_curve, p_values)))
-                comparator_auc.append(float(_trapezoid(
+                full_auc.append(float(np.trapz(full_curve, p_values)))
+                comparator_auc.append(float(np.trapz(
                     comparator_curve, p_values)))
             differences = np.asarray(full_auc) - np.asarray(comparator_auc)
             summary = summarize(differences)
@@ -449,9 +486,8 @@ def build_outputs(data, metadata, validation):
 
     # Export every aggregate trajectory exactly as stored in the formal raw
     # result.  These curves are repeated-run summaries, not per-seed raw
-    # trajectories; inferential paired path statistics are therefore not
-    # computed from this file.  They are available from the subsequently run
-    # dedicated seed-level trajectory experiment and its separate report.
+    # trajectories; inferential paired path statistics therefore remain out of
+    # scope unless a dedicated run saves seed-level trajectories.
     time_series_path = (
         ANALYSIS_DIR / "formal_ablation_time_series_source_data.csv")
     time_series_fields = [
@@ -521,7 +557,7 @@ def build_outputs(data, metadata, validation):
         for index in range(len(seeds)):
             curve = [data[str(p)][model]["order_param"]["values"][index]
                      for p in p_values]
-            auc_values.append(float(_trapezoid(curve, p_values)))
+            auc_values.append(float(np.trapz(curve, p_values)))
         model_auc_values[model] = auc_values
         model_auc_summaries[model] = summarize(auc_values)
 
@@ -571,10 +607,9 @@ def build_outputs(data, metadata, validation):
             "landmark_sweeps": landmark_sweeps,
             "inference_boundary": (
                 "saved formal trajectories are across-replicate summaries; "
-                "figures and landmark tables from this file are descriptive; "
-                "paired path inference is reported separately in "
-                "FORMAL_TRAJECTORY_REPORT.md using the dedicated seed-level "
-                "trajectory data"
+                "figures and landmark tables are descriptive, while paired "
+                "trajectory AUC or first-passage inference requires raw "
+                "per-seed trajectories"
             ),
         },
     }
@@ -582,8 +617,14 @@ def build_outputs(data, metadata, validation):
     with json_path.open("w", encoding="utf-8") as handle:
         json.dump(output_json, handle, ensure_ascii=False, indent=2)
 
-    colors = {"full_model": "#DC2626", "no_triadic_feedback": "#0D9488",
-              "threshold_only": "#7C3AED"}
+    colors = {
+        "baseline": "#6B7280",
+        "weighted_bcm": "#2563EB",
+        "threshold_only": "#7C3AED",
+        "bcm_triangle": "#EA580C",
+        "no_triadic_feedback": "#0D9488",
+        "full_model": "#DC2626",
+    }
     fig, axes = plt.subplots(1, 3, figsize=(17, 5.2))
     for model in ("threshold_only", "no_triadic_feedback", "full_model"):
         means = np.asarray([data[str(p)][model]["order_param"]["mean"]
@@ -638,8 +679,8 @@ def build_outputs(data, metadata, validation):
     fig.suptitle("Formal six-model ablation: primary long-horizon contrasts",
                  fontweight="bold", y=0.995)
     fig.tight_layout(rect=(0, 0, 1, 0.94))
-    figure_path = FIGURE_DIR / "fig_formal_ablation_primary_contrasts.png"
-    fig.savefig(str(figure_path), dpi=300, bbox_inches="tight")
+    figure_paths = save_figure_formats(
+        fig, FIGURE_DIR / "fig_formal_ablation_primary_contrasts")
     plt.close(fig)
 
     trajectory_metrics = [
@@ -675,12 +716,11 @@ def build_outputs(data, metadata, validation):
         handles, labels, loc="upper center", ncol=3, frameon=False,
         bbox_to_anchor=(0.5, 0.992))
     fig.suptitle(
-        "Formal mechanism-focused trajectories (n=20 paired seeds)",
+        "Formal six-model trajectories (n=20 paired seeds)",
         fontweight="bold", y=0.999)
     fig.tight_layout(rect=(0, 0, 1, 0.965))
-    trajectory_figure_path = (
-        FIGURE_DIR / "fig_formal_ablation_time_trajectories.png")
-    fig.savefig(str(trajectory_figure_path), dpi=300, bbox_inches="tight")
+    trajectory_figure_paths = save_figure_formats(
+        fig, FIGURE_DIR / "fig_formal_ablation_time_trajectories")
     plt.close(fig)
 
     convergence_metrics = ["mean_abs_dx", "accepted_update_rate"]
@@ -718,9 +758,8 @@ def build_outputs(data, metadata, validation):
         "Formal convergence diagnostics (n=20 paired seeds)",
         fontweight="bold", y=0.999)
     fig.tight_layout(rect=(0, 0, 1, 0.965))
-    convergence_figure_path = (
-        FIGURE_DIR / "fig_formal_ablation_convergence_diagnostics.png")
-    fig.savefig(str(convergence_figure_path), dpi=300, bbox_inches="tight")
+    convergence_figure_paths = save_figure_formats(
+        fig, FIGURE_DIR / "fig_formal_ablation_convergence_diagnostics")
     plt.close(fig)
 
     report_path = ANALYSIS_DIR / "FORMAL_ABLATION_REPORT.md"
@@ -778,8 +817,8 @@ def build_outputs(data, metadata, validation):
             str(raw_path), str(point_path), str(all_metric_auc_path),
             str(all_metric_point_path), str(summary_path),
             str(time_series_path), str(landmark_path), str(json_path),
-            str(report_path), str(figure_path),
-            str(trajectory_figure_path), str(convergence_figure_path),
+            str(report_path), *figure_paths,
+            *trajectory_figure_paths, *convergence_figure_paths,
         ],
     }
 

@@ -4,7 +4,6 @@
 """
 
 import os
-import numpy as np
 from collections import OrderedDict
 
 # ================================================================
@@ -18,18 +17,11 @@ def format_beta_key(b):
     return f"{float(b):.1f}"
 
 def format_eps_key(e):
-    # Three decimals are required for the canonical 0.025-spaced grid.
-    return f"{float(e):.3f}"
+    return f"{float(e):.2f}"
 
 __all__ = list(globals().get('__all__', [])) + [
     'format_p_key', 'format_beta_key', 'format_eps_key'
 ]
-
-# One publication-wide source for every epsilon_0 scan.  Keep three decimal
-# places: rounding this grid to two decimals changes 0.125, 0.175, ... and can
-# make stored labels disagree with the values that were actually simulated.
-EPSILON_0_GRID = tuple(round(0.10 + x * 0.025, 3) for x in range(19))
-__all__.append('EPSILON_0_GRID')
 
 # ================================================================
 # 1. 网络参数 - Holme-Kim 网络生成模型的参数配置
@@ -43,17 +35,21 @@ NETWORK = {
 }
 
 # ================================================================
-# 2. 信任阈值参数 - 动态阈值机制的核心参数
+# 2. 结构依赖阈值参数 - 边特异有效阈值的核心参数
 # ================================================================
 
 TRUST = {
     'epsilon_0_default': 0.15,          # ★ 基础容忍阈值 (测试用)
     'alpha': 3.5,                       # ★ 权重敏感度指数
-    # Backward-compatible alias for the single canonical epsilon_0 grid.
-    'epsilon_values': list(EPSILON_0_GRID),
+    'epsilon_values': [round(0.02 + x * 0.02, 2) for x in range(20)],
                                         # ★ ε₀扫描范围 (从0.02到0.40，20个点)
-    'epsilon_0_range': list(EPSILON_0_GRID),
+    'epsilon_0_range': [round(0.10 + x * 0.025, 3) for x in range(19)],
 }
+
+try:
+    TRUST['epsilon_0_range'] = [round(float(x), 2) for x in TRUST['epsilon_0_range']]
+except Exception:
+    pass
 
 # ================================================================
 # 3. 动力学参数 - 意见演化过程的基本参数
@@ -70,28 +66,35 @@ DYNAMICS = {
 # ================================================================
 
 # 使用 OrderedDict 保持模型定义的顺序
+# 标志语义（与 dynamics.py 中各 _step_* 方法一一对应）：
+#   edge_specific_threshold : ε 是否随边权重 w 变化（ε = ε_eff(w)）
+#   triangle_trigger        : 是否以局部聚类系数 C_i 触发三角交互
+#   third_party_damping     : 成功三角更新是否乘 exp(-β·|x_i-x_k|)
+#   step_weight             : 普通边更新步长是否乘 Jaccard 权重 w
 MODEL_TYPES = OrderedDict([
-    # 基线模型：经典 Deffuant 模型，无权重调制、无三角形机制
+    # 基线模型：经典 Deffuant 模型，固定阈值、无权重、无三角机制
     ('baseline', {
         'label': 'Asynchronous unilateral BCM',
         'description': '异步单节点、固定阈值的有界信任基线（仅更新被抽中的节点）',
         'engine_key': 'baseline',        # 仿真引擎标识
         'color': '#6B7280',              # 绘图颜色（灰色）
         'marker': 's',                   # 绘图标记（方形）
-        'use_trust': False,              # 不使用信任阈值
-        'use_triangle': False,           # 不使用三角形机制
-        'use_weight': False,             # 不使用边权重
+        'edge_specific_threshold': False,
+        'triangle_trigger': False,
+        'third_party_damping': False,
+        'step_weight': False,
     }),
-    # 加权 BCM 模型：仅加入 Jaccard 权重影响步长
+    # 加权 BCM 模型：固定阈值 + Jaccard 权重调制更新步长
     ('weighted_bcm', {
         'label': 'Weighted BCM',
-        'description': '仅加入Jaccard权重影响步长',
+        'description': '固定阈值 ε_0，Jaccard 权重调制更新步长；无三角机制',
         'engine_key': 'weighted_bcm',
         'color': '#2563EB',              # 蓝色
         'marker': '^',                   # 三角形
-        'use_trust': False,
-        'use_triangle': False,
-        'use_weight': True,              # 使用边权重
+        'edge_specific_threshold': False,
+        'triangle_trigger': False,
+        'third_party_damping': False,
+        'step_weight': True,
     }),
     # 仅结构依赖阈值：用于隔离边特异阈值本身的贡献
     ('threshold_only', {
@@ -100,9 +103,32 @@ MODEL_TYPES = OrderedDict([
         'engine_key': 'threshold_only',
         'color': '#7C3AED',
         'marker': 'P',
-        'use_trust': True,
-        'use_triangle': False,
-        'use_weight': True,
+        'edge_specific_threshold': True,
+        'triangle_trigger': False,
+        'third_party_damping': False,
+        'step_weight': False,
+    }),
+    ('mean_threshold_only', {
+        'label': 'Uniform Mean Threshold',
+        'description': '对每条边使用网络实际边特异阈值的算术平均值',
+        'engine_key': 'mean_threshold_only',
+        'color': '#0891B2',
+        'marker': 'X',
+        'edge_specific_threshold': False,
+        'triangle_trigger': False,
+        'third_party_damping': False,
+        'step_weight': False,
+    }),
+    ('randomized_threshold_only', {
+        'label': 'Randomly Reassigned Thresholds',
+        'description': '将网络实际边特异阈值随机重排到无向边上',
+        'engine_key': 'randomized_threshold_only',
+        'color': '#65A30D',
+        'marker': 'P',
+        'edge_specific_threshold': True,
+        'triangle_trigger': False,
+        'third_party_damping': False,
+        'step_weight': False,
     }),
     # BCM + Triangle 模型：固定阈值 + 三角触发，无第三方衰减
     ('bcm_triangle', {
@@ -111,9 +137,10 @@ MODEL_TYPES = OrderedDict([
         'engine_key': 'bcm_triangle',
         'color': '#EA580C',              # 橙色
         'marker': 'D',                   # 菱形
-        'use_trust': True,               # 使用信任阈值（但用固定阈值）
-        'use_triangle': True,            # 使用三角形机制
-        'use_weight': False,
+        'edge_specific_threshold': False,
+        'triangle_trigger': True,
+        'third_party_damping': False,
+        'step_weight': False,
     }),
     # 完整模型：包含所有机制
     ('full_model', {
@@ -122,20 +149,34 @@ MODEL_TYPES = OrderedDict([
         'engine_key': 'full_model',
         'color': '#DC2626',              # 红色
         'marker': 'o',                   # 圆形
-        'use_trust': True,
-        'use_triangle': True,            # 使用三角形机制
-        'use_weight': True,
+        'edge_specific_threshold': True,
+        'triangle_trigger': True,
+        'third_party_damping': True,
+        'step_weight': False,
     }),
-    # 无结构模型：关闭高阶结构验证
+    # 无第三方不一致衰减模型：保留三角触发与三边阈值检查，但 Phi=1
     ('no_triadic_feedback', {
         'label': 'No Triadic Feedback',
         'description': '保留 C_i 三角触发和三边阈值检查，但关闭第三方不一致衰减（Phi=1）',
         'engine_key': 'no_triadic_feedback',
         'color': '#0D9488',              # 青色
         'marker': 'v',                   # 倒三角
-        'use_trust': True,
-        'use_triangle': True,
-        'use_weight': True,
+        'edge_specific_threshold': True,
+        'triangle_trigger': True,
+        'third_party_damping': False,
+        'step_weight': False,
+    }),
+    # Reviewer control: suppress dyadic updating after a failed triangle gate.
+    ('full_model_no_triangle_fallback', {
+        'label': 'Full Model, No Failed-Triangle Fallback',
+        'description': '完整模型；三角门失败后不执行回退的二人更新',
+        'engine_key': 'full_model_no_triangle_fallback',
+        'color': '#9333EA',
+        'marker': 'X',
+        'edge_specific_threshold': True,
+        'triangle_trigger': True,
+        'third_party_damping': True,
+        'step_weight': False,
     }),
 ])
 
@@ -147,23 +188,21 @@ MODEL_ALIASES = {
     'trust': 'threshold_only',
     'trust_only': 'threshold_only',
     'triangle_fixed': 'bcm_triangle',
+    'no_structure': 'no_triadic_feedback',
     'triangle': 'no_triadic_feedback',
     'triangle_only': 'no_triadic_feedback',
     'full': 'full_model',
 }
 
-# Accepted only when reproducing legacy scripts.  These names are scientifically
-# misleading and must not appear in new result files or manuscript text.
-DEPRECATED_MODEL_ALIASES = {
-    'no_structure': 'no_triadic_feedback',
-}
-
 # 模型显示顺序列表
-MODEL_DISPLAY_ORDER = list(MODEL_TYPES.keys())
+MODEL_DISPLAY_ORDER = [
+    'baseline', 'weighted_bcm', 'threshold_only', 'bcm_triangle',
+    'no_triadic_feedback', 'full_model',
+]
 
 def resolve_model_key(key: str) -> str:
     """解析模型键名，处理别名映射
-    
+
     参数:
         key: 输入的模型键名或别名
     返回:
@@ -175,18 +214,10 @@ def resolve_model_key(key: str) -> str:
         return key
     if key in MODEL_ALIASES:
         return MODEL_ALIASES[key]
-    if key in DEPRECATED_MODEL_ALIASES:
-        import warnings
-        warnings.warn(
-            "model alias {!r} is deprecated; use {!r}".format(
-                key, DEPRECATED_MODEL_ALIASES[key]),
-            DeprecationWarning, stacklevel=2)
-        return DEPRECATED_MODEL_ALIASES[key]
     raise KeyError(f"未知 model_type: {key}. 可选: {list(MODEL_TYPES.keys())}")
 
 # 将模型相关函数和变量添加到公共接口
-__all__ += ['MODEL_ALIASES', 'DEPRECATED_MODEL_ALIASES',
-            'MODEL_DISPLAY_ORDER', 'resolve_model_key']
+__all__ += ['MODEL_ALIASES', 'MODEL_DISPLAY_ORDER', 'resolve_model_key']
 
 # ================================================================
 # 5. 仿真控制 - 蒙特卡洛仿真的基本设置
@@ -232,7 +263,7 @@ SENSITIVITY = {
 # ================================================================
 
 JOINT_SWEEP = {
-    'eps_values': list(EPSILON_0_GRID),  # 与所有 epsilon_0 实验共用同一网格
+    'eps_values': [round(0.10 + x * 0.025, 3) for x in range(19)],  # epsilon 扫描值 (0.10到0.55，19个点)
     'beta_values': [round(x * 0.25, 2) for x in range(21)],  # beta 扫描值 (0.0到5.0，21个点)
     'p_hk': 0.6,                         # 联合扫描时的默认 p 值
     'p_beta_p_values': [round(x * 0.05, 2) for x in range(21)],  # p-beta 联合扫描的 p 值 (0.0到1.0，21个点)
@@ -246,6 +277,11 @@ JOINT_SWEEP = {
 METRICS = {
     'cluster_gap_threshold': 0.05,       # 聚类间距离阈值（用于识别不同团体）
     'cluster_diameter_threshold': 0.05,  # 共识簇最大意见直径（用于OP，避免大N链式虚高）
+    # Forward transition-prediction operational criterion. Keep these separate
+    # from generic cluster settings so the reported transition definition is
+    # explicit and cannot drift when unrelated cluster metrics are adjusted.
+    'transition_order_window_width': 0.05,
+    'transition_order_cutoff': 0.95,
     'cluster_min_size': 1,               # 最小聚类大小
     'triangle_consensus_eps': None,      # 三角形共识阈值（None 表示使用默认值）
     'order_param_consensus_threshold': 0.9,  # 有序参数共识阈值
@@ -325,7 +361,7 @@ FIGURE_DIR = os.path.join(OUTPUT_DIR, 'figures')   # 图表文件目录
 
 def get_model_styles():
     """获取所有模型的样式配置（标签、颜色、标记）
-    
+
     返回:
         字典，键为模型名，值为样式配置字典
     """
@@ -340,7 +376,7 @@ def get_model_styles():
 
 def get_p_style(p_str):
     """获取指定 p 值的颜色和标记样式
-    
+
     参数:
         p_str: p 值的字符串表示
     返回:
@@ -352,9 +388,9 @@ def get_p_style(p_str):
 
 def get_triangle_consensus_eps():
     """获取三角形共识阈值
-    
+
     如果 METRICS 中未设置，则使用 TRUST 中的默认值
-    
+
     返回:
         阈值数值
     """
@@ -363,7 +399,7 @@ def get_triangle_consensus_eps():
 
 def get_metrics_threshold(name):
     """获取指定名称的指标阈值
-    
+
     参数:
         name: 阈值名称
     返回:

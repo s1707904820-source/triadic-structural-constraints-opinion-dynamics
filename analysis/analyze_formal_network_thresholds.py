@@ -46,15 +46,47 @@ N_RUNS = 20
 SEEDS = standard_seeds(N_RUNS)
 RAW_METRICS = [
     "n_edges",
+    "n_triangle_edges",
+    "n_nontriangle_edges",
     "fraction_nontriangle_edges",
     "mean_jaccard_all_edges",
     "mean_jaccard_triangle_edges",
     "mean_jaccard_nontriangle_edges",
     "max_abs_jaccard_nontriangle_edges",
+    "n_nontriangle_edges_with_positive_jaccard",
+    "n_triangle_edges_with_zero_jaccard",
     "mean_effective_threshold",
     "effective_threshold_at_mean_weight",
     "jensen_gap",
 ]
+
+
+def triangle_edge_partition(graph):
+    """Classify edges by independently enumerated triangle membership.
+
+    This deliberately does not use Jaccard weights to define the classes:
+    doing so would make the reported zero-weight check tautological.  The
+    identity being checked is that, in a simple undirected graph, an edge is
+    in a triangle if and only if its endpoints have at least one common
+    neighbour, which is also equivalent to a strictly positive Jaccard
+    numerator.
+    """
+    if graph.is_directed() or graph.is_multigraph():
+        raise ValueError("triangle-edge partition requires a simple undirected graph")
+    if any(u == v for u, v in graph.edges()):
+        raise ValueError("self-loops are not supported in triangle-edge partition")
+
+    triangles, _ = NetworkGenerator.extract_triangles(graph)
+    triangle_edges = set()
+    for a, b, c in triangles:
+        triangle_edges.add(frozenset((a, b)))
+        triangle_edges.add(frozenset((a, c)))
+        triangle_edges.add(frozenset((b, c)))
+
+    all_edges = set(frozenset((u, v)) for u, v in graph.edges())
+    if not triangle_edges.issubset(all_edges):
+        raise RuntimeError("triangle enumeration returned a non-edge")
+    return triangle_edges, all_edges.difference(triangle_edges)
 
 
 def write_json_atomic(payload, path):
@@ -75,24 +107,37 @@ def calculate_one(p_hk, seed, trust):
     graph = NetworkGenerator.generate_holme_kim(
         int(NETWORK["N"]), int(NETWORK["m"]), float(p_hk), seed=int(seed))
     weights = NetworkGenerator.compute_jaccard_weights(graph)
-    edge_weights = np.asarray([
-        weights.get((u, v), weights.get((v, u), 0.0))
-        for u, v in graph.edges()
+    edge_records = []
+    for u, v in graph.edges():
+        edge_records.append((
+            frozenset((u, v)),
+            float(weights.get((u, v), weights.get((v, u), 0.0))),
+        ))
+    edge_weights = np.asarray([weight for _, weight in edge_records], dtype=float)
+
+    # Structural classes are obtained from explicit triangle enumeration,
+    # independently of the Jaccard values being audited.
+    triangle_edges, nontriangle_edges = triangle_edge_partition(graph)
+    triangle_weights = np.asarray([
+        weight for edge, weight in edge_records if edge in triangle_edges
     ], dtype=float)
-    nontriangle = edge_weights == 0.0
-    triangle = np.logical_not(nontriangle)
+    nontriangle_weights = np.asarray([
+        weight for edge, weight in edge_records if edge in nontriangle_edges
+    ], dtype=float)
     thresholds = np.asarray([
         trust.effective_threshold(value) for value in edge_weights
     ], dtype=float)
     mean_weight = float(np.mean(edge_weights))
     threshold_at_mean = float(trust.effective_threshold(mean_weight))
-    nontriangle_weights = edge_weights[nontriangle]
-    triangle_weights = edge_weights[triangle]
     return {
         "p_hk": float(p_hk),
         "seed": int(seed),
         "n_edges": int(edge_weights.size),
-        "fraction_nontriangle_edges": float(np.mean(nontriangle)),
+        "n_triangle_edges": int(triangle_weights.size),
+        "n_nontriangle_edges": int(nontriangle_weights.size),
+        "fraction_nontriangle_edges": (
+            float(nontriangle_weights.size / edge_weights.size)
+            if edge_weights.size else 0.0),
         "mean_jaccard_all_edges": mean_weight,
         "mean_jaccard_triangle_edges": (
             float(np.mean(triangle_weights)) if triangle_weights.size else 0.0),
@@ -102,6 +147,10 @@ def calculate_one(p_hk, seed, trust):
         "max_abs_jaccard_nontriangle_edges": (
             float(np.max(np.abs(nontriangle_weights)))
             if nontriangle_weights.size else 0.0),
+        "n_nontriangle_edges_with_positive_jaccard": int(
+            np.sum(nontriangle_weights > 0.0)),
+        "n_triangle_edges_with_zero_jaccard": int(
+            np.sum(triangle_weights <= 0.0)),
         "mean_effective_threshold": float(np.mean(thresholds)),
         "effective_threshold_at_mean_weight": threshold_at_mean,
         "jensen_gap": float(threshold_at_mean - np.mean(thresholds)),
@@ -127,14 +176,21 @@ def main():
             for metric in RAW_METRICS
         }
 
-    exact_zero = all(
+    nontriangle_zero = all(
         row["max_abs_jaccard_nontriangle_edges"] == 0.0
+        and row["n_nontriangle_edges_with_positive_jaccard"] == 0
+        for row in raw_rows)
+    triangle_positive = all(
+        row["n_triangle_edges_with_zero_jaccard"] == 0
         for row in raw_rows)
     minimum_jensen_gap = min(row["jensen_gap"] for row in raw_rows)
     validation = {
-        "status": "PASS" if exact_zero and minimum_jensen_gap >= -1e-15
-        else "FAIL",
-        "nontriangle_jaccard_exactly_zero": bool(exact_zero),
+        "status": "PASS" if (
+            nontriangle_zero and triangle_positive
+            and minimum_jensen_gap >= -1e-15) else "FAIL",
+        "nontriangle_jaccard_exactly_zero": bool(nontriangle_zero),
+        "all_triangle_edges_have_positive_jaccard": bool(triangle_positive),
+        "classification_method": "explicit triangle enumeration, independent of Jaccard weights",
         "minimum_observed_jensen_gap": float(minimum_jensen_gap),
         "expected_records": len(P_VALUES) * N_RUNS,
         "observed_records": len(raw_rows),
@@ -225,10 +281,13 @@ def main():
             "种子与正式消融一致。\n".format(
                 NETWORK["N"], NETWORK["m"]))
         handle.write(
-            "- 所有非三角边的最大绝对 Jaccard 权重为 {:.3g}。"
-            "在简单无自环图中，一条边不属于任何三角形等价于其两个"
-            "端点没有共同邻居，因此这里不是近似为0，而是严格等于0。\n".format(
+            "- 三角边/非三角边由显式三角形枚举独立分类，而不是按 Jaccard 权重是否为零分类。"
+            "所有非三角边的最大绝对 Jaccard 权重为 {:.3g}；"
+            "所有三角边的 Jaccard 权重均严格为正。\n".format(
                 max_nontriangle))
+        handle.write(
+            "- 在简单无向无自环图中，一条边属于三角形当且仅当两个端点至少有一个共同邻居；"
+            "因此非三角边 Jaccard 严格为零，而非经验近似。\n")
         handle.write(
             "- epsilon_eff(w) 对 w 为凹函数，所以 epsilon_eff(E[w]) "
             "不小于 E[epsilon_eff(w)]。所有网络观测到的 Jensen gap "

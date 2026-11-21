@@ -8,7 +8,7 @@ import numpy as np
 from network import NetworkGenerator
 from dynamics import TrustThreshold, OpinionDynamics
 from metrics import Metrics
-from config import SIMULATION, METRICS
+from config import SIMULATION
 
 
 class SingleRun:
@@ -76,6 +76,42 @@ class SingleRun:
             0 if convergence_min_steps is None else int(convergence_min_steps)
         )
 
+    @staticmethod
+    def _build_edge_threshold_assignment(G, weights, trust, model_type, seed):
+        """Build a fixed edge-threshold assignment for control variants."""
+        if model_type not in ('mean_threshold_only',
+                              'randomized_threshold_only'):
+            return None
+
+        def canonical_edge(u, v):
+            return (u, v) if repr(u) <= repr(v) else (v, u)
+
+        edges = sorted(
+            (canonical_edge(u, v) for u, v in G.edges()),
+            key=lambda edge: (repr(edge[0]), repr(edge[1])),
+        )
+        thresholds = [
+            float(trust.effective_threshold(
+                weights.get((u, v), weights.get((v, u), 0.0))))
+            for u, v in edges
+        ]
+        if not thresholds:
+            return {}
+
+        if model_type == 'mean_threshold_only':
+            assigned = [float(np.mean(thresholds))] * len(thresholds)
+        else:
+            # Use an independent stream so this control does not alter update RNG.
+            shuffle_seed = (int(seed or 0) + 32452843) % (2 ** 32)
+            assigned = [float(value) for value in
+                        np.random.RandomState(shuffle_seed).permutation(thresholds)]
+
+        edge_thresholds = {}
+        for (u, v), threshold in zip(edges, assigned):
+            edge_thresholds[(u, v)] = threshold
+            edge_thresholds[(v, u)] = threshold
+        return edge_thresholds
+
     def execute(self, record_interval=1000, verbose=False):
         """执行仿真
         
@@ -132,12 +168,15 @@ class SingleRun:
         # --- 6. 信任阈值模型初始化 ---
         # 创建信任阈值模型实例
         trust = TrustThreshold(self.epsilon_0, self.alpha)
+        edge_thresholds = self._build_edge_threshold_assignment(
+            G, weights, trust, self.model_type, self.seed)
 
         # --- 7. 动力学引擎初始化 ---
         # 创建意见动力学引擎
         engine = OpinionDynamics(
             G, opinions, weights, triangles_list, node_triangles,
-            clustering, trust, self.mu, self.beta, self.model_type
+            clustering, trust, self.mu, self.beta, self.model_type,
+            edge_thresholds=edge_thresholds,
         )
 
         record_interval = int(record_interval)
@@ -196,7 +235,8 @@ class SingleRun:
                     ops_dict, triangles_list, self.epsilon_0))
             ts['triangle_admissibility_adaptive'].append(
                 Metrics.triangle_admissibility_adaptive(
-                    ops_dict, triangles_list, weights, trust))
+                    ops_dict, triangles_list, weights, trust,
+                    edge_thresholds=edge_thresholds))
             ts['mean_abs_dx'].append(float(mean_dx))
             ts['accepted_update_rate'].append(float(accepted_rate))
             return mean_dx
@@ -244,6 +284,14 @@ class SingleRun:
         f_tri = NetworkGenerator.compute_f_triangle(G)
 
         # 组装结果字典
+        # Keep metric subsampling independent from the model-specific
+        # dynamics stream.  Otherwise two paired variants with the same seed
+        # can evaluate edge disagreement on different random edge samples,
+        # adding avoidable noise to the paired comparison.
+        metric_seed = (0 if self.seed is None else int(self.seed))
+        metric_seed = (metric_seed + 104729) % (2 ** 32)
+        metric_rng = np.random.RandomState(metric_seed)
+
         result = {
             # 仿真参数
             'params': {
@@ -251,6 +299,9 @@ class SingleRun:
                 'epsilon_0': self.epsilon_0, 'alpha': self.alpha,
                 'mu': self.mu, 'beta': self.beta,
                 'model_type': self.model_type, 'seed': self.seed,
+                'threshold_assignment': (
+                    self.model_type if edge_thresholds is not None
+                    else 'network_edge_specific'),
                 'update_mode': self.update_mode,
                 'network_type': self.network_type,
                 'network_params': dict(self.network_params),
@@ -276,9 +327,10 @@ class SingleRun:
                     final_ops_dict, triangles_list, self.epsilon_0),
                 'triangle_admissibility_adaptive':
                     Metrics.triangle_admissibility_adaptive(
-                        final_ops_dict, triangles_list, weights, trust),
+                        final_ops_dict, triangles_list, weights, trust,
+                        edge_thresholds=edge_thresholds),
                 'edge_disagreement_penalty': Metrics.edge_disagreement_penalty(
-                    final_ops_dict, G, self.beta, rng=rng),
+                    final_ops_dict, G, self.beta, rng=metric_rng),
                 'opinions': final_ops_arr.tolist(),
             },
             # 动力学统计

@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "backend": "python-matplotlib",
+  "figure": {
+    "width_pt": 518.4,
+    "height_pt": 234.0
+  },
+  "panels": [
+    {
+      "id": "a",
+      "bbox_pt": [
+        62.208,
+        51.48,
+        179.51999999999995,
+        191.88
+      ],
+      "grid_id": "analysis-grid",
+      "panel_label": "a",
+      "row_start": 0,
+      "row_stop": 1,
+      "col_start": 0,
+      "col_stop": 1,
+      "panel_label_anchor_pt": [
+        44.611200000000004,
+        205.92
+      ]
+    },
+    {
+      "id": "b",
+      "bbox_pt": [
+        193.59743999999998,
+        51.48,
+        310.90943999999996,
+        191.88
+      ],
+      "grid_id": "analysis-grid",
+      "panel_label": "b",
+      "row_start": 0,
+      "row_stop": 1,
+      "col_start": 1,
+      "col_stop": 2,
+      "panel_label_anchor_pt": [
+        176.00063999999995,
+        205.92
+      ]
+    },
+    {
+      "id": "c",
+      "bbox_pt": [
+        324.9868799999999,
+        51.48,
+        442.2988799999999,
+        191.88
+      ],
+      "grid_id": "analysis-grid",
+      "panel_label": "c",
+      "row_start": 0,
+      "row_stop": 1,
+      "col_start": 2,
+      "col_stop": 3,
+      "panel_label_anchor_pt": [
+        307.39007999999995,
+        205.92
+      ]
+    }
+  ],
+  "row_groups": [
+    {
+      "id": "row-1",
+      "panels": [
+        "a",
+        "b",
+        "c"
+      ]
+    }
+  ],
+  "column_groups": [],
+  "tolerance_pt": 1.5,
+  "verdict": "PASS",
+  "findings": []
+}

@@ -785,8 +785,9 @@ def plot_network_validation():
     p_keys = sorted((key for key in data if not key.startswith('_')),
                     key=float)
     x = [float(p) for p in p_keys]
+
     panels = [
-        ("f_triangle", "Triangle Fraction $f_\Delta$", COLORS["blue"]),
+        ("f_triangle", "Triangle Fraction $f_\\Delta$", COLORS["blue"]),
         ("avg_clustering", "Average Clustering", COLORS["red"]),
         ("global_clustering", "Global Clustering", COLORS["green"]),
         ("modularity", "Modularity Q", COLORS["purple"]),
@@ -819,14 +820,14 @@ def plot_alpha_sweep():
     s_nc = [get_ci95_half_width(data[k], "n_clusters") for k in keys]
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.5))
     smooth_fill(ax1, x, y_op, s_op, COLORS["blue"], "Order Parameter", marker="o", clip_y=(0, 1))
-    ax1.set_xlabel(r"$\alpha$ (trust saturation rate)")
+    ax1.set_xlabel(r"$\alpha$ (edge-threshold sensitivity)")
     ax1.set_ylabel("Order Parameter")
     ax1.set_title(r"(a) Consensus vs $\alpha$", fontweight="bold")
     smooth_fill(ax2, x, y_nc, s_nc, COLORS["red"], "Number of Clusters", marker="s")
-    ax2.set_xlabel(r"$\alpha$ (trust saturation rate)")
+    ax2.set_xlabel(r"$\alpha$ (edge-threshold sensitivity)")
     ax2.set_ylabel("Number of Clusters")
     ax2.set_title(r"(b) Fragmentation vs $\alpha$", fontweight="bold")
-    fig.suptitle(r"Figure 5: Sensitivity to Trust Saturation Rate $\alpha$", fontweight="bold", fontsize=14, y=1.02)
+    fig.suptitle(r"Figure 5: Sensitivity to the Edge-Threshold Parameter $\alpha$", fontweight="bold", fontsize=14, y=1.02)
     fig.tight_layout()
     save_fig(fig, "fig5_alpha_sweep.png")
 
@@ -871,10 +872,7 @@ def plot_joint_eps_beta():
     for i, beta in enumerate(beta_vals):
         for j, eps in enumerate(eps_vals):
             sub = data.get("data", {})
-            candidates = [f"{eps:.3f}_{beta:.2f}",
-                          f"{eps:.2f}_{beta:.1f}",
-                          f"{eps:.2f}_{beta:.2f}",
-                          f"{eps:.1f}_{beta:.1f}"]
+            candidates = [f"{eps:.2f}_{beta:.1f}", f"{eps:.2f}_{beta:.2f}", f"{eps:.1f}_{beta:.1f}"]
             key = next((k for k in candidates if k in sub), None)
             if key:
                 tc[i, j] = get_stat(sub[key], "triangle_alignment_fixed")

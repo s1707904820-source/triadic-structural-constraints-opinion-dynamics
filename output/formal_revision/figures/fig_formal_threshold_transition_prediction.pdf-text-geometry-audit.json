@@ -1,0 +1,245 @@
+{
+  "pdf": "fig_formal_threshold_transition_prediction.pdf",
+  "minimum_font_pt": 5.0,
+  "text_lines_checked": 47,
+  "verdict": "PASS",
+  "errors": [],
+  "warnings": [],
+  "text_lines": [
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.1",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.3",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.5",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.6",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.7",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.8",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.9",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "1.0",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "pHK",
+      "minimum_font_pt": 8.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.1",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.3",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.5",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.6",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "Transition threshold epsilon0",
+      "minimum_font_pt": 8.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "a",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "0.0",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.1",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.2",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.3",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.4",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.5",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.6",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.7",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.8",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.9",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "1.0",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "pHK",
+      "minimum_font_pt": 8.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "−0.15",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "−0.10",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "−0.05",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.00",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.05",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "Observed - predicted epsilon0",
+      "minimum_font_pt": 8.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "b",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "Uniform reference",
+      "minimum_font_pt": 6.400000095367432
+    },
+    {
+      "page": 1,
+      "text": "Mean-edge prediction",
+      "minimum_font_pt": 6.400000095367432
+    },
+    {
+      "page": 1,
+      "text": "Structure-only simulated",
+      "minimum_font_pt": 6.400000095367432
+    },
+    {
+      "page": 1,
+      "text": "Full model simulated",
+      "minimum_font_pt": 6.400000095367432
+    },
+    {
+      "page": 1,
+      "text": "Structure-only: mean-edge",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "Structure-only: degree-weighted",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "Full model: mean-edge",
+      "minimum_font_pt": 6.199999809265137
+    }
+  ]
+}

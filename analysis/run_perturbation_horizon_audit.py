@@ -19,14 +19,14 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import experiments as experiments_module  # noqa: E402
-from config import EPSILON_0_GRID, NETWORK, SIMULATION  # noqa: E402
+from config import NETWORK, SIMULATION  # noqa: E402
 from experiments import ExperimentManager  # noqa: E402
 
 
 AUDIT_DIR = ROOT / "output" / "formal_revision" / "data" / "perturbation_horizon_audit"
 P_VALUES = [0.0, 0.4, 0.8]
 SIGMA_VALUES = [0.0, 0.05, 0.2]
-EPS_VALUES = list(EPSILON_0_GRID)
+EPS_VALUES = [round(0.10 + index * 0.025, 3) for index in range(19)]
 
 
 def estimate_updates(horizon, n_runs):
@@ -43,7 +43,6 @@ def parse_args():
     parser.add_argument("--horizons", nargs="+", type=float,
                         default=[50.0, 100.0, 200.0])
     parser.add_argument("--runs", type=int, default=5)
-    parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--no-resume", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
@@ -67,7 +66,7 @@ def main():
     old_sweeps = SIMULATION.get("sweep_sweeps")
     try:
         experiments_module.DATA_DIR = str(AUDIT_DIR)
-        manager = ExperimentManager(workers=args.workers)
+        manager = ExperimentManager()
         timing = {}
         for horizon in horizons:
             SIMULATION["sweep_sweeps"] = float(horizon)

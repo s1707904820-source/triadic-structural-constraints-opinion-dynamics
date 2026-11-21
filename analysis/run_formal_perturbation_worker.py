@@ -15,13 +15,14 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import experiments as experiments_module  # noqa: E402
-from config import EPSILON_0_GRID, SIMULATION  # noqa: E402
+from config import SIMULATION  # noqa: E402
 from experiments import ExperimentManager  # noqa: E402
 
 
 FORMAL_DATA_DIR = ROOT / "output" / "formal_revision" / "data" / "perturbation_workers"
+WORKER_OUTPUT_PREFIX = "exp_formal_perturbation_revision_v2_p_"
 SIGMA_VALUES = [0.0, 0.01, 0.02, 0.05, 0.10, 0.20]
-EPS_VALUES = list(EPSILON_0_GRID)
+EPS_VALUES = [round(0.10 + index * 0.025, 3) for index in range(19)]
 
 
 def main():
@@ -42,7 +43,8 @@ def main():
             num_runs=args.runs, p_values=[args.p], sigma_values=SIGMA_VALUES,
             eps_values=EPS_VALUES, perturb_each_step=False,
             resume=args.resume,
-            output_filename="exp_formal_perturbation_p_{:.2f}.json".format(args.p),
+            output_filename=(
+                "{}{:0.2f}.json".format(WORKER_OUTPUT_PREFIX, args.p)),
         )
     finally:
         experiments_module.DATA_DIR = old_dir

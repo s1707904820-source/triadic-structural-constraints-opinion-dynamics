@@ -1,17 +1,6 @@
-# Runtime versions used for the authoritative formal_py313 batch.
-# Python 3.13.0; no machine-specific executable path is required.
-contourpy==1.4.0
-cycler==0.12.1
-fonttools==4.66.0
-kiwisolver==1.5.1
-matplotlib==3.11.2
-networkx==3.7
-numpy==2.5.3
-packaging==26.3
-pillow==12.3.0
-pyparsing==3.3.3
-python-dateutil==2.9.0.post0
-scipy==1.18.1
-setuptools==84.0.0
-six==1.17.0
-wheel==0.48.0
+# Runtime versions used for the revision audit and smoke tests.
+# Python 3.7.0 (the supplied Anaconda environment)
+numpy==1.21.6
+networkx==2.6.3
+matplotlib==2.2.3
+scipy==1.1.0

@@ -1,0 +1,220 @@
+{
+  "pdf": "fig_formal_threshold_recovery_dynamics.pdf",
+  "minimum_font_pt": 5.0,
+  "text_lines_checked": 42,
+  "verdict": "PASS",
+  "errors": [],
+  "warnings": [],
+  "text_lines": [
+    {
+      "page": 1,
+      "text": "0",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "25",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "50",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "75",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "100",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "Time after shock (sweeps)",
+      "minimum_font_pt": 8.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.10",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.15",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.20",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.25",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.30",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.35",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.40",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.45",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.50",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "0.55",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "Threshold epsilon",
+      "minimum_font_pt": 8.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "a",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "pHK = 0.0",
+      "minimum_font_pt": 7.5
+    },
+    {
+      "page": 1,
+      "text": "0",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "25",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "50",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "75",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "100",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "Time after shock (sweeps)",
+      "minimum_font_pt": 8.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "b",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "pHK = 0.4",
+      "minimum_font_pt": 7.5
+    },
+    {
+      "page": 1,
+      "text": "0",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "25",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "50",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "75",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "100",
+      "minimum_font_pt": 6.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "Time after shock (sweeps)",
+      "minimum_font_pt": 8.199999809265137
+    },
+    {
+      "page": 1,
+      "text": "c",
+      "minimum_font_pt": 8.0
+    },
+    {
+      "page": 1,
+      "text": "pHK = 0.8",
+      "minimum_font_pt": 7.5
+    },
+    {
+      "page": 1,
+      "text": "1e-10",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1e-8",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1e-6",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1e-4",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1e-2",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "1e-1",
+      "minimum_font_pt": 6.0
+    },
+    {
+      "page": 1,
+      "text": "Mean opinion SD",
+      "minimum_font_pt": 7.0
+    }
+  ]
+}
